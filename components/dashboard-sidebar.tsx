@@ -90,15 +90,15 @@ export function DashboardSidebar({
               <div className="lv-gradient-header p-4">
                 <h3 className="font-medium text-white text-lg">{businessInfo.name}</h3>
                 <p className="text-sm text-white/80">{typeof businessInfo.location === 'string' ? businessInfo.location : 'Location not set'}</p>
-              </div>
+                    </div>
               <div className="p-4">
-                <div className="flex items-center space-x-2 text-sm">
+                  <div className="flex items-center space-x-2 text-sm">
                   <span className="lv-badge lv-badge-primary">{businessInfo.category}</span>
                   <span className="lv-badge lv-badge-secondary">
-                    {businessInfo.businessType === "physical" ? "Physical Location" : "Service Area Business"}
-                  </span>
+                      {businessInfo.businessType === "physical" ? "Physical Location" : "Service Area Business"}
+                    </span>
+                  </div>
                 </div>
-              </div>
             </div>
           )}
         </div>
@@ -141,7 +141,7 @@ export function DashboardSidebar({
                               metrics.averageRanking <= 3
                                 ? "lv-badge-success"
                                 : metrics.averageRanking <= 7
-                                  ? "bg-green-100 text-green-800"
+                                ? "bg-green-100 text-green-800"
                                   : metrics.averageRanking <= 10
                                     ? "lv-badge-warning"
                                     : "lv-badge-danger"
@@ -193,44 +193,44 @@ export function DashboardSidebar({
 
             {expandedSections.gridSettings && (
               <div className="lv-card p-5 animate-slide-up">
-                <div className="space-y-4">
-                  <div className="space-y-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
                     <label className="text-sm font-medium text-blue-900">Location</label>
-                    <div className="flex space-x-2">
+                  <div className="flex space-x-2">
                       <input
-                        value={locationInput}
-                        onChange={(e) => setLocationInput(e.target.value)}
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
                         placeholder="Enter address or coordinates"
                         className="lv-input"
-                      />
+                    />
                       <button onClick={onLocationUpdate} className="lv-button py-2 px-2">
-                        <Search className="h-4 w-4" />
+                      <Search className="h-4 w-4" />
                       </button>
-                    </div>
                   </div>
+                </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                <div className="space-y-2">
                       <label className="text-sm font-medium text-blue-900">Grid Size</label>
                       <input
                         type="number"
                         min={3}
                         max={15}
-                        value={gridSize}
+                    value={gridSize}
                         onChange={(e) => setGridSize(Number(e.target.value))}
                         className="lv-input"
                       />
                       <p className="text-xs text-slate-500">Number of points per side</p>
-                    </div>
+                </div>
 
-                    <div className="space-y-2">
+                <div className="space-y-2">
                       <label className="text-sm font-medium text-blue-900">Distance (km)</label>
-                      <input
+                  <input
                         type="number"
                         min={0.5}
                         max={50}
                         step={0.5}
-                        value={pointDistance}
+                    value={pointDistance}
                         onChange={(e) => setPointDistance(Number(e.target.value))}
                         className="lv-input"
                       />
@@ -254,8 +254,8 @@ export function DashboardSidebar({
                         >
                           Heatmap
                         </button>
-                      </div>
-                    </div>
+                  </div>
+                </div>
                   )}
 
                   {visualizationType === "heatmap" && (
@@ -293,7 +293,7 @@ export function DashboardSidebar({
               <div className="lv-stat-card">
                 <p className="text-xs text-slate-500 mb-1">Visibility</p>
                 <p className="text-2xl font-bold text-secondary">{selectedKeywordMetrics.visibilityScore.toFixed(1)}%</p>
-              </div>
+                </div>
               <div className="lv-stat-card">
                 <p className="text-xs text-slate-500 mb-1">Top 3 Positions</p>
                 <div className="flex items-end justify-between">

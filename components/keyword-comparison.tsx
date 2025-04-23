@@ -52,11 +52,11 @@ export function KeywordComparison({ businessInfo, rankingData }: KeywordComparis
     .filter((k) => k.metrics)
     .map((k) => {
       return {
-        name: k.keyword,
+      name: k.keyword,
         averageRanking: k.metrics!.averageRanking,
-        top3: k.metrics!.top3Percentage,
-        top10: k.metrics!.top10Percentage,
-        other: k.metrics!.otherPercentage,
+      top3: k.metrics!.top3Percentage,
+      top10: k.metrics!.top10Percentage,
+      other: k.metrics!.otherPercentage,
       }
     })
 

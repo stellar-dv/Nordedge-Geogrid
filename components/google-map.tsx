@@ -134,7 +134,7 @@ export function GoogleMap({
 
               // Determine marker icon based on ranking
               let iconColor, iconText;
-              
+
               // Map ranking to appropriate colors
               if (ranking <= 3) {
                 // Top positions (1-3)
@@ -172,7 +172,7 @@ export function GoogleMap({
               
               // Convert SVG to data URL
               const svgUrl = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
-              
+
               // Create custom marker with click handler for nearby businesses
               const marker = new googleMaps.maps.Marker({
                 position: point,

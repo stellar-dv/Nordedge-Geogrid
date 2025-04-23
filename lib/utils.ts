@@ -130,22 +130,22 @@ export function calculateKeywordMetrics(gridResults: number[][]): {
   gridResults.forEach(row => {
     row.forEach(ranking => {
       totalPoints++
-      
-      // Skip points with no ranking in calculations
+
+    // Skip points with no ranking in calculations
       if (ranking === 0) {
-        notRankedCount++
-        return
-      }
+      notRankedCount++
+      return
+    }
 
-      rankingSum += ranking
+    rankingSum += ranking
 
-      if (ranking <= 3) {
-        topThreeCount++
-      }
+    if (ranking <= 3) {
+      topThreeCount++
+    }
 
-      if (ranking <= 10) {
-        topTenCount++
-      }
+    if (ranking <= 10) {
+      topTenCount++
+    }
     })
   })
 

@@ -34,18 +34,18 @@ export async function POST(request: Request) {
     console.log(`Searching for "${query}" at location ${locationString} with radius ${validRadius}m`)
     
     try {
-      const response = await client.placesNearby({
-        params: {
-          key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-          location: locationString,
-          radius: validRadius,
-          keyword: query,
-          type: 'establishment',
-        },
-      })
+    const response = await client.placesNearby({
+      params: {
+        key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+        location: locationString,
+        radius: validRadius,
+        keyword: query,
+        type: 'establishment',
+      },
+    })
 
       // Handle different Google Places API status codes
-      if (response.data.status !== 'OK') {
+    if (response.data.status !== 'OK') {
         console.error(`Google Places API returned status: ${response.data.status}`, response.data.error_message)
         
         // Map specific error codes to appropriate responses
@@ -84,18 +84,18 @@ export async function POST(request: Request) {
               { status: 500 }
             )
         }
-      }
+    }
 
-      return NextResponse.json({
-        results: response.data.results.map((place) => ({
-          name: place.name,
-          place_id: place.place_id,
-          rating: place.rating,
-          user_ratings_total: place.user_ratings_total,
-          vicinity: place.vicinity,
-          types: place.types,
-        })),
-      })
+    return NextResponse.json({
+      results: response.data.results.map((place) => ({
+        name: place.name,
+        place_id: place.place_id,
+        rating: place.rating,
+        user_ratings_total: place.user_ratings_total,
+        vicinity: place.vicinity,
+        types: place.types,
+      })),
+    })
     } catch (apiError: any) {
       console.error('Google Places API request failed:', apiError.message)
       return NextResponse.json(

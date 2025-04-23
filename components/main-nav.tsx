@@ -51,17 +51,17 @@ export function MainNav() {
 
   return (
     <>
-      <nav
-        className={cn(
+    <nav
+      className={cn(
           "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-2",
-          scrolled
+        scrolled
             ? "bg-primary shadow-md"
             : "bg-gradient-to-r from-primary to-secondary"
-        )}
-      >
+      )}
+    >
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center">
+        <div className="flex items-center">
+          <Link href="/" className="flex items-center">
               <div className="h-10 w-auto mr-8 relative overflow-hidden">
                 <img 
                   src="/geogrid-logo.png" 
@@ -71,34 +71,34 @@ export function MainNav() {
                     scrolled ? "brightness-100" : "brightness-[1.15] drop-shadow-md"
                   )} 
                 />
-              </div>
-            </Link>
-            
+            </div>
+          </Link>
+
             <div className="hidden md:flex items-center space-x-1">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/")
-    
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/")
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
                       "flex items-center h-10 px-4 text-sm font-medium transition-all rounded-full",
-                      isActive
+                  isActive
                         ? "bg-white/20 text-white shadow-sm backdrop-blur-sm"
                         : "text-white/80 hover:bg-white/10 hover:text-white"
-                    )}
-                  >
-                    <item.icon className="w-4 h-4 mr-2" />
-                    {item.name}
-                  </Link>
-                )
-              })}
+                )}
+              >
+                <item.icon className="w-4 h-4 mr-2" />
+                {item.name}
+              </Link>
+            )
+          })}
             </div>
-          </div>
+        </div>
 
-          <div className="flex items-center space-x-3">
-            <button
+        <div className="flex items-center space-x-3">
+          <button
               className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all hover:shadow-md hover:-translate-y-0.5"
             >
               <HelpCircle className="w-5 h-5" />
@@ -121,9 +121,9 @@ export function MainNav() {
             
             <button
               className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all hover:shadow-md hover:-translate-y-0.5"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           </div>
         </div>
       </nav>
@@ -163,9 +163,9 @@ export function MainNav() {
             <div className="p-4 border-t border-slate-100">
               <button className="lv-button w-full">
                 Sign In
-              </button>
-            </div>
-          </div>
+          </button>
+        </div>
+      </div>
         </div>
       )}
 

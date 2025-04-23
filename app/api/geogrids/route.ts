@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient("https://ktgxqvnjnnljdjxnwykw.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0Z3hxdm5qbm5samRqeG53eWt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ2NjA4MDAsImV4cCI6MjA2MDIzNjgwMH0.aeyLCPo9TRsgPgmW2XmXnSmmS617wtcAj8WhvstvsFE");
 
 // Define types for better type safety
 type Business = {
