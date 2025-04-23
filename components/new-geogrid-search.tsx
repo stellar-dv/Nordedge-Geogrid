@@ -752,30 +752,16 @@ export function NewGeoGridSearch() {
         const lng = west + (j * (east - west) / (currentGridSize - 1));
         const gridIndex = i * currentGridSize + j;
 
-        // Create SVG marker with LocalViking font
-        const svgMarker = {
-          path: google.maps.SymbolPath.CIRCLE,
-          fillColor: "#4285F4",
-          fillOpacity: 0.8,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 1.5,
-          scale: 10,
-          labelOrigin: new google.maps.Point(0, 0)
-        };
-
+        // Create marker with rank icon image
         const marker = new google.maps.Marker({
           position: { lat, lng },
           map: mapInstanceRef.current,
           draggable: false,
-          icon: svgMarker,
-          // Remove the label that shows numbers on grid points
-          // label: {
-          //   text: (gridIndex + 1).toString(),
-          //   color: "#FFFFFF",
-          //   fontFamily: "LocalVikingAlt, sans-serif",
-          //   fontSize: "11px",
-          //   fontWeight: "bold"
-          // },
+          icon: {
+            url: '/images/rank-icons/X.png', // Use X icon as default for initial state
+            scaledSize: new google.maps.Size(32, 32),
+            anchor: new google.maps.Point(16, 16)
+          },
           clickable: true,
           title: `Grid Location (${i+1},${j+1})`,
           optimized: false,
@@ -1985,71 +1971,31 @@ export function NewGeoGridSearch() {
             
             // Update marker appearance based on ranking
             if (marker) {
-              // Choose color and size based on ranking
-              let color, size, strokeColor, strokeWeight, zIndex;
+              // Use rank icon images instead of generating styles
+              let iconFile;
+              let size = 32; // Default size for the icon images
+              let zIndex;
               
-              if (ranking <= 3) {
-                color = "#4CAF50"; // Green for top 3
-                size = 16;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 2;
-                zIndex = 4;
-              } else if (ranking <= 7) {
-                color = "#8BC34A"; // Light green for top 7
-                size = 14;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 1.5;
-                zIndex = 3;
-              } else if (ranking <= 10) {
-                color = "#FFC107"; // Yellow for top 10
-                size = 12;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 1.5;
-                zIndex = 2;
-              } else if (ranking <= 15) {
-                color = "#FF9800"; // Orange for top 15
-                size = 10;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 1;
-                zIndex = 1;
+              if (ranking <= 20) {
+                // Use the corresponding number icon (1.png, 2.png, etc.)
+                iconFile = `/images/rank-icons/${ranking}.png`;
+                // Higher rankings get higher z-index
+                zIndex = 20 - ranking + 1;
               } else {
-                color = "#F44336"; // Red for not found or low ranking
-                size = 8;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 1;
+                // Not ranked uses X.png
+                iconFile = `/images/rank-icons/X.png`;
                 zIndex = 0;
               }
               
-              // Update marker icon and label
+              // Update marker icon to use the image
               marker.setIcon({
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: color,
-                fillOpacity: 0.85,
-                strokeColor: strokeColor,
-                strokeWeight: strokeWeight,
-                scale: size,
-                labelOrigin: new google.maps.Point(0, 0)
+                url: iconFile,
+                scaledSize: new google.maps.Size(size, size),
+                anchor: new google.maps.Point(size/2, size/2)
               });
               
-              // Set the label to show the ranking
-              if (ranking <= 20) {
-                marker.setLabel({
-                  text: ranking.toString(),
-                  color: "#FFFFFF",
-                  fontFamily: "LocalVikingAlt, sans-serif",
-                  fontSize: "11px",
-                  fontWeight: "bold"
-                });
-              } else {
-                // For rankings > 20, don't show a number
-                marker.setLabel({
-                  text: "×",
-                  color: "#FFFFFF",
-                  fontFamily: "LocalVikingAlt, sans-serif",
-                  fontSize: "10px",
-                  fontWeight: "bold"
-                });
-              }
+              // Remove the label as the rank is now shown in the image
+              marker.setLabel(null);
               
               // Update marker title and z-index
               marker.setTitle(`Rank: ${ranking <= 20 ? ranking : 'Not Found'}`);
@@ -2057,308 +2003,6 @@ export function NewGeoGridSearch() {
               
               // Store ranking in marker for info window access
               (marker as any).ranking = ranking;
-              
-              // Update the click handler to show ranking information
-              google.maps.event.clearListeners(marker, 'click');
-              marker.addListener('click', async function() {
-                // Create info window if not exists
-                const infoWindow = new google.maps.InfoWindow();
-                
-                // Set content with ranking info
-                infoWindow.setContent(`
-                  <div style="padding: 16px; max-width: 300px; font-family: 'LocalVikingAlt', sans-serif;">
-                    <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 18px;">Search Results</h3>
-                    <p style="margin: 4px 0; font-size: 14px;">Keyword: "${searchTerm}"</p>
-                    <div style="display: flex; align-items: center; margin: 12px 0; background-color: ${color}20; padding: 10px; border-radius: 6px;">
-                      <div style="width: 30px; height: 30px; border-radius: 50%; background-color: ${color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 10px;">
-                        ${ranking <= 20 ? ranking : '×'}
-                      </div>
-                      <div>
-                        <p style="margin: 0; font-weight: bold; font-size: 15px;">
-                          ${ranking <= 20 
-                            ? `Your business ranks #${ranking} here` 
-                            : 'Your business not found in top 20'}
-                        </p>
-                        <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-                          Grid position: Row ${i+1}, Column ${j+1}
-                        </p>
-                      </div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-top: 12px;">
-                      <button id="view-details-${markerIndex}" style="background-color: #4285F4; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; width: 48%; font-family: 'LocalVikingAlt', sans-serif; font-size: 13px;">
-                        View Search Results
-                      </button>
-                      <button id="view-restaurants-${markerIndex}" style="background-color: #34A853; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; width: 48%; font-family: 'LocalVikingAlt', sans-serif; font-size: 13px;">
-                        Nearby Restaurants
-                      </button>
-                    </div>
-                  </div>
-                `);
-                
-                // Open info window
-                infoWindow.open(mapInstanceRef.current, marker);
-                
-                // Function to fetch nearby restaurants
-                const fetchNearbyRestaurants = async () => {
-                  infoWindow.setContent(`
-                    <div style="padding: 12px; text-align: center;">
-                      <p>Loading nearby restaurants...</p>
-                      <div class="loading-spinner" style="margin: 10px auto;"></div>
-                    </div>
-                  `);
-                  
-                  try {
-                    // Get the marker position
-                    const position = marker.getPosition();
-                    if (!position) throw new Error("Invalid marker position");
-                    
-                    const lat = position.lat();
-                    const lng = position.lng();
-                    
-                    // Fetch nearby restaurants
-                    const response = await fetch('/api/places-search', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        query: "restaurant",
-                        location: { lat, lng },
-                        radius: 1500, // 1.5km radius
-                      }),
-                    });
-                    
-                    if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-                    
-                    const data = await response.json();
-                    
-                    // Create content for restaurants
-                    let content = `
-                      <div style="padding: 16px; max-width: 320px; font-family: 'LocalVikingAlt', sans-serif;">
-                        <h3 style="font-weight: bold; margin: 0 0 8px 0;">Nearby Restaurants</h3>
-                        <p style="margin: 0 0 12px 0; font-size: 14px;">
-                          Showing restaurants near this location
-                        </p>
-                    `;
-                    
-                    if (data.results && data.results.length > 0) {
-                      content += `<div style="margin-top: 8px;"></div>
-                      <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
-                        <tr style="background-color: #f3f4f6;">
-                          <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">#</th>
-                          <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Restaurant</th>
-                          <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Rating</th>
-                        </tr>`;
-                      
-                      // Show top 10 restaurants
-                      const topResults = data.results.slice(0, 10);
-                      topResults.forEach((place: any, idx: number) => {
-                        const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
-                        const backgroundColor = isTarget ? '#34A85320' : (idx % 2 === 0 ? '#ffffff' : '#f9fafb');
-                        const fontWeight = isTarget ? 'bold' : 'normal';
-                        const nameColor = isTarget ? '#34A853' : '#000000';
-                        
-                        content += `
-                          <tr style="background-color: ${backgroundColor};">
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;">${idx + 1}</td>
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb; font-weight: ${fontWeight}; color: ${nameColor};">
-                              ${place.name} ${isTarget ? '(Your Business)' : ''}
-                            </td>
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;">
-                              ${place.rating ? `${place.rating} ★` : 'N/A'}
-                            </td>
-                          </tr>
-                        `;
-                      });
-                      
-                      content += `</table>`;
-                    } else {
-                      content += `<p style="margin-top: 12px;">No restaurants found nearby.</p>`;
-                    }
-                    
-                    content += `
-                      <button id="back-to-summary-${markerIndex}" style="background-color: #757575; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; font-family: 'LocalVikingAlt', sans-serif; margin-top: 12px;">
-                        Back to Summary
-                      </button>
-                    </div>`;
-                    
-                    infoWindow.setContent(content);
-                    
-                    // Add back button listener
-                    google.maps.event.addListener(infoWindow, 'domready', function() {
-                      const backButton = document.getElementById(`back-to-summary-${markerIndex}`);
-                      if (backButton) {
-                        backButton.addEventListener('click', function() {
-                          // Re-trigger click to show the initial info window
-                          google.maps.event.trigger(marker, 'click');
-                        });
-                      }
-                    });
-                    
-                  } catch (error) {
-                    console.error('Error fetching nearby restaurants:', error);
-                    infoWindow.setContent(`
-                      <div style="padding: 12px; max-width: 240px;">
-                        <h3 style="font-weight: bold; margin: 0 0 8px 0;">Error</h3>
-                        <p style="color: #EA4335;">Failed to load nearby restaurants. Please try again.</p>
-                        <button id="back-to-summary-${markerIndex}" style="background-color: #757575; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; font-family: 'LocalVikingAlt', sans-serif; margin-top: 12px;">
-                          Back to Summary
-                        </button>
-                      </div>
-                    `);
-                    
-                    // Add back button listener
-                    google.maps.event.addListener(infoWindow, 'domready', function() {
-                      const backButton = document.getElementById(`back-to-summary-${markerIndex}`);
-                      if (backButton) {
-                        backButton.addEventListener('click', function() {
-                          // Re-trigger click to show the initial info window
-                          google.maps.event.trigger(marker, 'click');
-                        });
-                      }
-                    });
-                  }
-                };
-                
-                // Function to fetch search results (reusing existing code)
-                const fetchSearchResults = async () => {
-                  infoWindow.setContent(`
-                    <div style="padding: 12px; text-align: center;">
-                      <p>Loading detailed results...</p>
-                      <div class="loading-spinner" style="margin: 10px auto;"></div>
-                    </div>
-                  `);
-                  
-                  try {
-                    // Get the marker position
-                    const position = marker.getPosition();
-                    if (!position) throw new Error("Invalid marker position");
-                    
-                    const lat = position.lat();
-                    const lng = position.lng();
-                    
-                    // Fetch nearby businesses
-                    const response = await fetch('/api/places-search', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        query: searchTerm,
-                        location: { lat, lng },
-                        radius: 2000, // 2km radius
-                      }),
-                    });
-                    
-                    if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-                    
-                    const data = await response.json();
-                    
-                    // Create detailed content
-                    let content = `
-                      <div style="padding: 16px; max-width: 320px; font-family: 'LocalVikingAlt', sans-serif;">
-                        <h3 style="font-weight: bold; margin: 0 0 8px 0;">Local Search Results</h3>
-                        <p style="margin: 0 0 12px 0; font-size: 14px;">
-                          Keyword: "${searchTerm}" at this location
-                        </p>
-                    `;
-                    
-                    if (data.results && data.results.length > 0) {
-                      content += `<div style="margin-top: 8px;"><strong>Top Businesses:</strong></div>
-                      <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
-                        <tr style="background-color: #f3f4f6;">
-                          <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Rank</th>
-                          <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Business</th>
-                          <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Rating</th>
-                        </tr>`;
-                      
-                      // Show top 10 results
-                      const topResults = data.results.slice(0, 10);
-                      topResults.forEach((place: any, idx: number) => {
-                        const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
-                        const backgroundColor = isTarget ? '#4285F420' : (idx % 2 === 0 ? '#ffffff' : '#f9fafb');
-                        const fontWeight = isTarget ? 'bold' : 'normal';
-                        const nameColor = isTarget ? '#4285F4' : '#000000';
-                        
-                        content += `
-                          <tr style="background-color: ${backgroundColor};">
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;">${idx + 1}</td>
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb; font-weight: ${fontWeight}; color: ${nameColor};">
-                              ${place.name} ${isTarget ? '(Your Business)' : ''}
-                            </td>
-                            <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;">
-                              ${place.rating ? `${place.rating} ★` : 'N/A'}
-                            </td>
-                          </tr>
-                        `;
-                      });
-                      
-                      content += `</table>`;
-                    } else {
-                      content += `<p style="margin-top: 12px;">No businesses found for this search.</p>`;
-                    }
-                    
-                    content += `
-                      <button id="back-to-summary-${markerIndex}" style="background-color: #757575; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; font-family: 'LocalVikingAlt', sans-serif; margin-top: 12px;">
-                        Back to Summary
-                      </button>
-                    </div>`;
-                    
-                    infoWindow.setContent(content);
-                    
-                    // Add back button listener
-                    google.maps.event.addListener(infoWindow, 'domready', function() {
-                      const backButton = document.getElementById(`back-to-summary-${markerIndex}`);
-                      if (backButton) {
-                        backButton.addEventListener('click', function() {
-                          // Re-trigger click to show the initial info window
-                          google.maps.event.trigger(marker, 'click');
-                        });
-                      }
-                    });
-                    
-                  } catch (error) {
-                    console.error('Error fetching detailed results:', error);
-                    infoWindow.setContent(`
-                      <div style="padding: 12px; max-width: 240px;">
-                        <h3 style="font-weight: bold; margin: 0 0 8px 0;">Error</h3>
-                        <p style="color: #EA4335;">Failed to load detailed data. Please try again.</p>
-                        <button id="back-to-summary-${markerIndex}" style="background-color: #757575; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; font-family: 'LocalVikingAlt', sans-serif; margin-top: 12px;">
-                          Back to Summary
-                        </button>
-                      </div>
-                    `);
-                    
-                    // Add back button listener
-                    google.maps.event.addListener(infoWindow, 'domready', function() {
-                      const backButton = document.getElementById(`back-to-summary-${markerIndex}`);
-                      if (backButton) {
-                        backButton.addEventListener('click', function() {
-                          // Re-trigger click to show the initial info window
-                          google.maps.event.trigger(marker, 'click');
-                        });
-                      }
-                    });
-                  }
-                };
-                
-                // Add event listeners for the buttons
-                google.maps.event.addListener(infoWindow, 'domready', function() {
-                  const detailsButton = document.getElementById(`view-details-${markerIndex}`);
-                  const restaurantsButton = document.getElementById(`view-restaurants-${markerIndex}`);
-                  
-                  if (detailsButton) {
-                    detailsButton.addEventListener('click', fetchSearchResults);
-                  }
-                  
-                  if (restaurantsButton) {
-                    restaurantsButton.addEventListener('click', fetchNearbyRestaurants);
-                  }
-                });
-              });
-              
-              // Increment marker index
-              markerIndex += 1;
             }
           }
         }
