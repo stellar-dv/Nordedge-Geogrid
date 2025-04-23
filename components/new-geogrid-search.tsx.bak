@@ -1,0 +1,3070 @@
+"use client"
+
+import { useState, useEffect, useRef, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Search,
+  MapPin,
+  Loader2,
+  Info,
+  HelpCircle,
+  Target,
+  Calendar,
+  Clock,
+  Settings,
+  Filter,
+  Download,
+  Trash2,
+  Edit,
+  Plus,
+  FileText,
+  Repeat,
+  Store,
+  Link,
+  AlertCircle,
+  Check,
+  ChevronRight,
+} from "lucide-react"
+import { loadGoogleMaps } from "@/lib/google-maps-loader"
+import { saveGridResult, getGridResults, initDatabase } from "@/lib/geogrid-service"
+import type { BusinessInfo } from "@/types"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Separator } from "@/components/ui/separator"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { createClient } from "@supabase/supabase-js"
+import { debounce } from "lodash"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useToast } from "@/components/ui/use-toast"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { generateGridPoints } from "@/lib/utils"
+import { fetchRankingData } from "@/services/ranking-service"
+
+// Create a single Supabase client for interacting with your database
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+
+
+// Utility to get user location (browser first, then IP)
+
+
+export function NewGeoGridSearch() {
+  const [activeTab, setActiveTab] = useState("new-geogrid")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessInfo | null>(null)
+  const [businessSearchQuery, setBusinessSearchQuery] = useState("")
+  const [businessSearchResults, setBusinessSearchResults] = useState<BusinessInfo[]>([])
+  const [isSearchingBusiness, setIsSearchingBusiness] = useState(false)
+  const [gridSize, setGridSize] = useState("13x13")
+  const [gridDistance, setGridDistance] = useState("2.5")
+  const [googleRegion, setGoogleRegion] = useState("global")
+  const [mapLoaded, setMapLoaded] = useState(false)
+  const [mapError, setMapError] = useState<string | null>(null)
+  const [searchTermSuggestions, setSearchTermSuggestions] = useState<string[]>([])
+  const [showSearchTermInfo, setShowSearchTermInfo] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchProgress, setSearchProgress] = useState(0)
+  const [loadingStep, setLoadingStep] = useState("")
+  const [businessSource, setBusinessSource] = useState("google-search")
+  const [historyResults, setHistoryResults] = useState<any[]>([])
+  const [selectedConfig, setSelectedConfig] = useState<string | null>(null)
+  const [configName, setConfigName] = useState("")
+  const [noResultsFound, setNoResultsFound] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [placeIdInput, setPlaceIdInput] = useState("")
+  const [mapUrlInput, setMapUrlInput] = useState("")
+  const [showHelpDialog, setShowHelpDialog] = useState(false)
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false)
+  const [isLoadingGbp, setIsLoadingGbp] = useState(false)
+  const [dbInitialized, setDbInitialized] = useState(false)
+  const [gbpListings, setGbpListings] = useState<BusinessInfo[]>([])
+  const [autocompleteService, setAutocompleteService] = useState<google.maps.places.AutocompleteService | null>(null)
+  const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([])
+  const [showPredictions, setShowPredictions] = useState(false)
+  const [gridOverlay, setGridOverlay] = useState<google.maps.Marker[]>([]);
+  const [centerMarker, setCenterMarker] = useState<google.maps.Marker | null>(null);
+  const GRID_SIZE = 13; // 13x13 grid
+  const GRID_DISTANCE = 2.5; // 2.5km between points
+  const EARTH_RADIUS = 111.32; // km per degree at equator
+  const [showLocationDialog, setShowLocationDialog] = useState(true)
+  const [locationPermissionRequested, setLocationPermissionRequested] = useState(false)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationMarker, setLocationMarker] = useState<google.maps.Marker | null>(null);
+  // Add these state variables after the other useState declarations
+  const [settings, setSettings] = useState({
+    apiKey: "",
+    defaultGridSize: "13x13",
+    defaultDistance: "2.5",
+    autoSave: true,
+    emailReports: false,
+    darkMode: false
+  });
+
+  const mapRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<any>(null)
+  const markersRef = useRef<any[]>([])
+  const placesServiceRef = useRef<any>(null)
+  const router = useRouter()
+  const { toast } = useToast()
+
+  // Add this useEffect hook after the other useEffect declarations
+  useEffect(() => {
+    // Load saved settings from localStorage
+    const savedSettings = localStorage.getItem("geogrid-settings");
+    if (savedSettings) {
+      setSettings(JSON.parse(savedSettings));
+    }
+  }, []);
+
+  // Function to create grid overlay
+  const createGridOverlay = (center: google.maps.LatLng) => {
+    // Clear existing grid
+    gridOverlay.forEach(marker => marker.setMap(null));
+    setGridOverlay([]);
+
+    const markers: google.maps.Marker[] = [];
+    const currentGridSize = Number.parseInt(gridSize.split("x")[0]);
+    const currentGridDistance = Number.parseFloat(gridDistance);
+    const offset = ((currentGridSize - 1) / 2) * (currentGridDistance / EARTH_RADIUS);
+
+    // Calculate bounds
+    const centerLat = center.lat();
+    const centerLng = center.lng();
+    const north = centerLat + offset;
+    const south = centerLat - offset;
+    const east = centerLng + offset / Math.cos(centerLat * Math.PI / 180);
+    const west = centerLng - offset / Math.cos(centerLat * Math.PI / 180);
+
+    // Create center marker first
+    const centerMarker = new google.maps.Marker({
+      position: center,
+      map: mapInstanceRef.current,
+      draggable: true,
+      icon: {
+        url: 'https://localviking.com/icons/preview-draggable.png',
+        scaledSize: new google.maps.Size(24, 24),
+        anchor: new google.maps.Point(12, 12)
+      },
+      clickable: true,
+      title: 'Business location (drag to move grid)',
+      optimized: false
+    });
+
+    // Create info window for center marker
+    const centerInfoWindow = new google.maps.InfoWindow({
+      content: `<div class="p-2">
+        <h3 class="font-bold text-sm">${selectedBusiness?.name || 'Business Location'}</h3>
+        <p class="text-xs">${selectedBusiness?.address || 'Center of grid'}</p>
+        <p class="text-xs mt-1">Drag to reposition grid</p>
+      </div>`
+    });
+    
+    centerMarker.addListener('click', () => {
+      centerInfoWindow.open(mapInstanceRef.current, centerMarker);
+    });
+
+    // Add drag listeners to center marker
+    let lastUpdate = 0;
+    const updateInterval = 16; // ~60fps
+
+    centerMarker.addListener('drag', () => {
+      const now = Date.now();
+      if (now - lastUpdate < updateInterval) return;
+      lastUpdate = now;
+
+      const newCenter = centerMarker.getPosition();
+      if (!newCenter) return;
+
+      // Update all marker positions relative to the new center
+      const centerLat = newCenter.lat();
+      const centerLng = newCenter.lng();
+      const offset = ((currentGridSize - 1) / 2) * (currentGridDistance / EARTH_RADIUS);
+      const latStep = (offset * 2) / (currentGridSize - 1);
+      const lngStep = (offset * 2) / (currentGridSize - 1) / Math.cos(centerLat * Math.PI / 180);
+
+      for (let i = 0; i < currentGridSize; i++) {
+        for (let j = 0; j < currentGridSize; j++) {
+          if (i === Math.floor(currentGridSize / 2) && j === Math.floor(currentGridSize / 2)) continue; // Skip center
+          const lat = centerLat - offset + (i * latStep);
+          const lng = centerLng - offset + (j * lngStep);
+          markers[i * currentGridSize + j].setPosition({ lat, lng });
+        }
+      }
+    });
+
+    // Create a single info window to reuse for all grid points
+    const gridInfoWindow = new google.maps.InfoWindow();
+
+    // Function to show nearby businesses for a grid point
+    const showNearbyBusinesses = async (lat: number, lng: number, gridIndex: number) => {
+      try {
+        const response = await fetch('/api/places-search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: searchTerm || 'restaurant', // Use current search term or default
+            location: { lat, lng },
+            radius: 1000, // 1km radius to show nearby businesses
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.results || data.results.length === 0) {
+          return `<div class="p-3">
+            <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+            <p class="text-sm mt-1">No businesses found for "${searchTerm || 'restaurant'}"</p>
+            <p class="text-xs mt-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+            <p class="text-xs">Distance: ${gridDistance}km from center</p>
+          </div>`;
+        }
+
+        // Find the selected business in the results
+        const businessIndex = data.results.findIndex(
+          (result: any) => selectedBusiness && result.name.toLowerCase().includes(selectedBusiness.name.toLowerCase())
+        );
+
+        let content = `<div class="p-3">
+          <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+          <p class="text-sm mt-1">Search: "${searchTerm || 'restaurant'}"</p>
+          <p class="text-xs mb-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+          <div class="border-t pt-2">
+            <h4 class="font-bold text-sm">Top Results:</h4>
+            <ul class="mt-1 space-y-1 text-xs">`;
+
+        // Show top 5 results
+        const topResults = data.results.slice(0, 5);
+        topResults.forEach((place: any, idx: number) => {
+          const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
+          content += `<li class="${isTarget ? 'font-bold text-blue-600' : ''}">${idx + 1}. ${place.name} ${isTarget ? '(Your Business)' : ''}</li>`;
+        });
+
+        content += `</ul>`;
+
+        // Add business ranking info
+        if (selectedBusiness) {
+          if (businessIndex >= 0) {
+            content += `<p class="mt-2 font-bold text-sm">${selectedBusiness.name} ranks #${businessIndex + 1} here</p>`;
+          } else {
+            content += `<p class="mt-2 text-sm">${selectedBusiness.name} not found in top 20 results</p>`;
+          }
+        }
+
+        content += `</div>`;
+        return content;
+
+      } catch (error) {
+        console.error('Error fetching nearby businesses:', error);
+        return `<div class="p-3">
+          <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+          <p class="text-sm text-red-600">Error loading data</p>
+          <p class="text-xs mt-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+        </div>`;
+      }
+    };
+
+    // Create grid points (excluding center)
+    for (let i = 0; i < currentGridSize; i++) {
+      for (let j = 0; j < currentGridSize; j++) {
+        if (i === Math.floor(currentGridSize / 2) && j === Math.floor(currentGridSize / 2)) continue; // Skip center
+
+        const lat = south + (i * (north - south) / (currentGridSize - 1));
+        const lng = west + (j * (east - west) / (currentGridSize - 1));
+        const gridIndex = i * currentGridSize + j;
+
+        // Create SVG marker with LocalViking font
+        const svgMarker = {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: "#4285F4",
+          fillOpacity: 0.8,
+          strokeColor: "#FFFFFF",
+          strokeWeight: 1.5,
+          scale: 10,
+          labelOrigin: new google.maps.Point(0, 0)
+        };
+
+        const marker = new google.maps.Marker({
+          position: { lat, lng },
+          map: mapInstanceRef.current,
+          draggable: false,
+          icon: svgMarker,
+          label: {
+            text: (gridIndex + 1).toString(),
+            color: "#FFFFFF",
+            fontFamily: "LocalVikingAlt, sans-serif",
+            fontSize: "11px",
+            fontWeight: "bold"
+          },
+          clickable: true,
+          title: `Grid Point #${gridIndex + 1}`,
+          optimized: false,
+          zIndex: 1
+        });
+
+        // Store the grid position for reference
+        (marker as any).gridPosition = { row: i, col: j };
+        (marker as any).gridIndex = gridIndex;
+
+        // Add click listener
+        const infoWindow = new google.maps.InfoWindow();
+        
+        marker.addListener('click', function() {
+          console.log(`Grid point clicked: ${gridIndex} at position ${i},${j}`);
+          
+          // Show info window with loading content
+          infoWindow.setContent(`
+            <div style="padding: 12px; max-width: 240px; font-family: 'LocalVikingAlt', sans-serif;">
+              <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Grid Point #${gridIndex + 1}</h3>
+              <p style="margin: 0 0 8px 0; font-size: 14px;">Position: Row ${i+1}, Column ${j+1}</p>
+              <p style="margin: 0; font-size: 12px; color: #666;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+              <div style="margin-top: 12px; text-align: center;">
+                <button id="fetch-rankings-${gridIndex}" style="background-color: #4285F4; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;">
+                  Check Rankings
+                </button>
+              </div>
+            </div>
+          `);
+          
+          infoWindow.open(mapInstanceRef.current, marker);
+          
+          // Add event listener for the button after info window is shown
+          google.maps.event.addListener(infoWindow, 'domready', function() {
+            const button = document.getElementById(`fetch-rankings-${gridIndex}`);
+            if (button) {
+              button.addEventListener('click', async function() {
+                console.log("Button clicked, fetching rankings...");
+                
+                infoWindow.setContent(`
+                  <div style="padding: 12px; text-align: center;">
+                    <p>Loading nearby businesses...</p>
+                    <div class="loading-spinner" style="margin: 10px auto;"></div>
+                  </div>
+                `);
+                
+                try {
+                  // Perform the search using the current search term
+                  const response = await fetch('/api/places-search', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      query: searchTerm || 'restaurant',
+                      location: { lat, lng },
+                      radius: 2000, // 2km radius
+                    }),
+                  });
+                  
+                  if (!response.ok) {
+                    throw new Error(`Error: ${response.status}`);
+                  }
+                  
+                  const data = await response.json();
+                  
+                  // Find the selected business in results
+                  let businessIndex = -1;
+                  if (selectedBusiness) {
+                    businessIndex = data.results.findIndex(
+                      (place: any) => place.name.toLowerCase().includes(selectedBusiness!.name.toLowerCase())
+                    );
+                  }
+                  
+                  // Create result content
+                  let content = `
+                    <div style="padding: 12px; max-width: 300px; font-family: 'LocalVikingAlt', sans-serif;">
+                      <h3 style="font-weight: bold; margin: 0 0 8px 0;">Search Results</h3>
+                      <p style="margin: 0 0 8px 0; font-size: 14px;">Keyword: "${searchTerm || 'restaurant'}"</p>
+                  `;
+                  
+                  if (data.results && data.results.length > 0) {
+                    content += `<div style="margin-top: 8px;"><strong>Top 5 Results:</strong></div><ol style="margin: 4px 0; padding-left: 20px;">`;
+                    
+                    // Show top 5 results
+                    const topResults = data.results.slice(0, 5);
+                    topResults.forEach((place: any) => {
+                      const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
+                      content += `<li style="${isTarget ? 'font-weight: bold; color: #4285F4;' : ''}">${place.name} ${isTarget ? '(Your Business)' : ''}</li>`;
+                    });
+                    
+                    content += `</ol>`;
+                    
+                    // Add business ranking info
+                    if (selectedBusiness) {
+                      if (businessIndex >= 0) {
+                        content += `<p style="margin-top: 12px; font-weight: bold; color: #4285F4;">Your Business Ranks #${businessIndex + 1}</p>`;
+                      } else {
+                        content += `<p style="margin-top: 12px; color: #EA4335;">Your Business Not Found in Top Results</p>`;
+                      }
+                    }
+                  } else {
+                    content += `<p style="margin-top: 8px;">No businesses found for this search.</p>`;
+                  }
+                  
+                  content += `</div>`;
+                  infoWindow.setContent(content);
+                  
+                } catch (error) {
+                  console.error('Error fetching rankings:', error);
+                  infoWindow.setContent(`
+                    <div style="padding: 12px; max-width: 240px;">
+                      <h3 style="font-weight: bold; margin: 0 0 8px 0;">Error</h3>
+                      <p style="color: #EA4335;">Failed to load ranking data. Please try again.</p>
+                    </div>
+                  `);
+                }
+              });
+            }
+          });
+        });
+
+        markers.push(marker);
+      }
+    }
+
+    // Insert center marker at the correct position
+    markers.splice(Math.floor(currentGridSize * currentGridSize / 2), 0, centerMarker);
+    setCenterMarker(centerMarker);
+    setGridOverlay(markers);
+  };
+
+  // Effect to recreate grid when grid size or distance changes
+  useEffect(() => {
+    if (mapInstanceRef.current && centerMarker) {
+      const center = centerMarker.getPosition();
+      if (center) {
+        createGridOverlay(center);
+      }
+    }
+  }, [gridSize, gridDistance]);
+
+  // Initialize map function
+  const initMap = async () => {
+    if (!mapRef.current) return
+
+    try {
+      await loadGoogleMaps()
+
+      if (!window.google || !window.google.maps || !mapRef.current) return
+
+      const mapInstance = new window.google.maps.Map(mapRef.current, {
+        center: { lat: 0, lng: 0 }, // Default center, will be updated with user location
+        zoom: 2, // Start zoomed out until we get user location
+        mapTypeControl: true,
+        streetViewControl: true,
+        fullscreenControl: false,
+        styles: [
+          {
+            featureType: "water",
+            elementType: "geometry",
+            stylers: [{ color: "#e9e9e9" }, { lightness: 17 }],
+          },
+          {
+            featureType: "landscape",
+            elementType: "geometry",
+            stylers: [{ color: "#f5f5f5" }, { lightness: 20 }],
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry.fill",
+            stylers: [{ color: "#ffffff" }, { lightness: 17 }],
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }],
+          },
+          {
+            featureType: "road.arterial",
+            elementType: "geometry.fill",
+            stylers: [{ color: "#ffffff" }, { lightness: 18 }],
+          },
+          {
+            featureType: "road.local",
+            elementType: "geometry",
+            stylers: [{ color: "#ffffff" }, { lightness: 16 }],
+          },
+          {
+            featureType: "poi",
+            elementType: "geometry",
+            stylers: [{ color: "#f5f5f5" }, { lightness: 21 }],
+          },
+          {
+            featureType: "poi.park",
+            elementType: "geometry",
+            stylers: [{ color: "#dedede" }, { lightness: 21 }],
+          },
+          {
+            elementType: "labels.text.stroke",
+            stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }],
+          },
+          {
+            elementType: "labels.text.fill",
+            stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }],
+          },
+          {
+            elementType: "labels.icon",
+            stylers: [{ visibility: "off" }],
+          },
+          {
+            featureType: "transit",
+            elementType: "geometry",
+            stylers: [{ color: "#f2f2f2" }, { lightness: 19 }],
+          },
+          {
+            featureType: "administrative",
+            elementType: "geometry.fill",
+            stylers: [{ color: "#fefefe" }, { lightness: 20 }],
+          },
+          {
+            featureType: "administrative",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }],
+          },
+        ],
+      })
+
+      mapInstanceRef.current = mapInstance
+
+      // Initialize Places Service
+      placesServiceRef.current = new window.google.maps.places.PlacesService(mapInstance)
+
+      setMapLoaded(true)
+    } catch (error) {
+      console.error("Error loading Google Maps:", error)
+      setMapError("Failed to load Google Maps")
+    }
+  }
+
+  // Initialize database
+  useEffect(() => {
+    const initDb = async () => {
+      try {
+        const initialized = await initDatabase()
+        setDbInitialized(initialized)
+        console.log("Database initialized:", initialized)
+      } catch (error) {
+        console.error("Failed to initialize database:", error)
+      }
+    }
+
+    initDb()
+  }, [])
+
+  // Initialize markersRef to empty array to prevent null reference
+  useEffect(() => {
+    markersRef.current = []
+  }, [])
+
+  // Load history results
+  useEffect(() => {
+    if (activeTab === "history") {
+      const loadHistoryData = async () => {
+        setIsLoadingHistory(true)
+        try {
+          const results = await getGridResults()
+          setHistoryResults(results || []) // Ensure we always set an array
+        } catch (error) {
+          console.error("Error loading history results:", error)
+          setHistoryResults([])
+        } finally {
+          setIsLoadingHistory(false)
+        }
+      }
+
+      loadHistoryData()
+    }
+  }, [activeTab])
+
+  // Initialize map
+  useEffect(() => {
+    if (!mapRef.current || activeTab !== "new-geogrid") return
+
+    const initMap = async () => {
+      try {
+        await loadGoogleMaps()
+
+        if (!window.google || !window.google.maps || !mapRef.current) return
+
+        // Clear existing map instance if it exists
+        if (mapInstanceRef.current) {
+          const mapInstance = mapInstanceRef.current
+          // Clear all markers
+          if (markersRef.current) {
+            markersRef.current.forEach(marker => marker.setMap(null))
+            markersRef.current = []
+          }
+          // Clear grid overlay
+          if (gridOverlay.length > 0) {
+            gridOverlay.forEach(marker => marker.setMap(null))
+            setGridOverlay([])
+          }
+          // Clear map instance
+          mapInstanceRef.current = null
+        }
+
+        const mapInstance = new window.google.maps.Map(mapRef.current, {
+          center: { lat: 57.7089, lng: 11.9746 }, // Gothenburg, Sweden
+          zoom: 13,
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: false,
+          styles: [
+            {
+              featureType: "water",
+              elementType: "geometry",
+              stylers: [{ color: "#e9e9e9" }, { lightness: 17 }],
+            },
+            {
+              featureType: "landscape",
+              elementType: "geometry",
+              stylers: [{ color: "#f5f5f5" }, { lightness: 20 }],
+            },
+            {
+              featureType: "road.highway",
+              elementType: "geometry.fill",
+              stylers: [{ color: "#ffffff" }, { lightness: 17 }],
+            },
+            {
+              featureType: "road.highway",
+              elementType: "geometry.stroke",
+              stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }],
+            },
+            {
+              featureType: "road.arterial",
+              elementType: "geometry.fill",
+              stylers: [{ color: "#ffffff" }, { lightness: 18 }],
+            },
+            {
+              featureType: "road.local",
+              elementType: "geometry",
+              stylers: [{ color: "#ffffff" }, { lightness: 16 }],
+            },
+            {
+              featureType: "poi",
+              elementType: "geometry",
+              stylers: [{ color: "#f5f5f5" }, { lightness: 21 }],
+            },
+            {
+              featureType: "poi.park",
+              elementType: "geometry",
+              stylers: [{ color: "#dedede" }, { lightness: 21 }],
+            },
+            {
+              elementType: "labels.text.stroke",
+              stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }],
+            },
+            {
+              elementType: "labels.text.fill",
+              stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }],
+            },
+            {
+              elementType: "labels.icon",
+              stylers: [{ visibility: "off" }],
+            },
+            {
+              featureType: "transit",
+              elementType: "geometry",
+              stylers: [{ color: "#f2f2f2" }, { lightness: 19 }],
+            },
+            {
+              featureType: "administrative",
+              elementType: "geometry.fill",
+              stylers: [{ color: "#fefefe" }, { lightness: 20 }],
+            },
+            {
+              featureType: "administrative",
+              elementType: "geometry.stroke",
+              stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }],
+            },
+          ],
+        })
+
+        mapInstanceRef.current = mapInstance
+
+        // Initialize Places Service
+        placesServiceRef.current = new window.google.maps.places.PlacesService(mapInstance)
+
+        setMapLoaded(true)
+      } catch (error) {
+        console.error("Error loading Google Maps:", error)
+        setMapError("Failed to load Google Maps")
+      }
+    }
+
+    initMap()
+  }, [activeTab])
+
+  // Initialize Autocomplete service when map loads
+  useEffect(() => {
+    if (window.google && window.google.maps && window.google.maps.places) {
+      setAutocompleteService(new window.google.maps.places.AutocompleteService())
+    }
+  }, [mapLoaded])
+
+  // Handle input change with debounce
+  const handleInputChange = useCallback(
+    debounce((value: string) => {
+      if (!value.trim() || !autocompleteService) {
+        setPredictions([])
+        setShowPredictions(false)
+        return
+      }
+
+      autocompleteService.getPlacePredictions(
+        {
+          input: value,
+          types: ['establishment'],
+          // Remove componentRestrictions entirely to allow global search
+          language: 'en'
+        },
+        (predictions, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+            setPredictions(predictions)
+            setShowPredictions(true)
+          } else {
+            console.error('Autocomplete error:', status)
+            setPredictions([])
+            setShowPredictions(false)
+          }
+        }
+      )
+    }, 300),
+    [autocompleteService]
+  )
+
+  // Update handlePredictionSelect
+  const handlePredictionSelect = async (prediction: google.maps.places.AutocompletePrediction) => {
+    setBusinessSearchQuery(prediction.description);
+    setShowPredictions(false);
+    
+    if (!placesServiceRef.current) return;
+
+    // First get basic place details
+    placesServiceRef.current.getDetails(
+      {
+        placeId: prediction.place_id,
+        fields: ['name', 'formatted_address', 'geometry', 'types', 'place_id', 'reviews', 'rating', 'user_ratings_total'],
+      },
+      async (place: google.maps.places.PlaceResult | null, status: google.maps.places.PlacesServiceStatus) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && place && place.geometry?.location) {
+          const business: BusinessInfo = {
+            name: place.name || 'Unknown Business',
+            address: place.formatted_address || 'No address available',
+            placeId: place.place_id || prediction.place_id,
+            location: {
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng(),
+            },
+            category: place.types?.[0] || 'Business',
+          };
+          setSelectedBusiness(business);
+
+          // Center map on business location
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setCenter(place.geometry.location);
+            mapInstanceRef.current.setZoom(13);
+
+            // Create grid overlay
+            createGridOverlay(place.geometry.location);
+          }
+
+          // Save review data to Supabase
+          try {
+            // First check if the business exists in our database
+            const { data: existingBusinesses, error: queryError } = await supabase
+              .from('businesses')
+              .select('id')
+              .eq('place_id', place.place_id || prediction.place_id);
+
+            let businessId: number | null = null;
+
+            if (queryError) {
+              throw new Error(`Error checking for existing business: ${queryError.message}`);
+            }
+
+            if (!existingBusinesses || existingBusinesses.length === 0) {
+              // Create a new business record
+              const businessData = {
+                name: place.name || 'Unknown Business',
+                address: place.formatted_address || 'No address available',
+                place_id: place.place_id || prediction.place_id,
+                lat: place.geometry?.location?.lat() || 0,
+                lng: place.geometry?.location?.lng() || 0,
+                category: place.types?.[0] || null,
+              };
+
+              // Insert the business
+              const { data: insertedBusiness, error: insertError } = await supabase
+                .from('businesses')
+                .insert(businessData)
+                .select('id')
+                .single();
+
+              if (insertError) {
+                throw new Error(`Error creating business: ${insertError.message}`);
+              }
+
+              businessId = insertedBusiness?.id || null;
+            } else {
+              // Use the first matching business
+              businessId = existingBusinesses[0].id;
+            }
+
+            if (!businessId) {
+              throw new Error('Failed to get or create business ID');
+            }
+
+            toast({
+              title: "Business Saved",
+              description: `${place.name} has been saved to the database`,
+              variant: "default" as const
+            });
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            console.error('Error saving business data:', error);
+            toast({
+              title: "Error Saving Business Data",
+              description: `An unexpected error occurred: ${errorMessage}`,
+              variant: "destructive" as const
+            });
+          }
+        }
+      }
+    );
+  };
+
+  // Update search term suggestions based on selected business
+  useEffect(() => {
+    if (selectedBusiness) {
+      // Get real search terms from Supabase
+      const fetchSearchTerms = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("grid_results")
+            .select("search_term")
+            .order("created_at", { ascending: false })
+            .limit(20)
+
+          if (error) {
+            console.error("Error fetching search terms:", error)
+            return
+          }
+
+          // Extract unique search terms
+          const terms = [...new Set(data.map((item) => item.search_term))]
+
+          if (terms.length > 0) {
+            // Filter terms based on business category if available
+            const categoryTerms = selectedBusiness.category
+              ? terms.filter(
+                  (term) =>
+                    term.toLowerCase().includes(selectedBusiness.category!.toLowerCase()) ||
+                    selectedBusiness.category!.toLowerCase().includes(term.toLowerCase()),
+                )
+              : []
+
+            // Combine category-specific terms with other terms
+            const suggestions = [...categoryTerms, ...terms.filter((term) => !categoryTerms.includes(term))].slice(0, 5)
+
+            setSearchTermSuggestions(suggestions)
+
+            // Set default search term if none selected
+            if (!searchTerm && suggestions.length > 0) {
+              setSearchTerm(suggestions[0])
+            }
+          }
+        } catch (error) {
+          console.error("Error in fetchSearchTerms:", error)
+        }
+      }
+
+      fetchSearchTerms()
+    }
+  }, [selectedBusiness, searchTerm, supabase])
+
+  // Search for businesses using Google Places API
+  const searchBusinesses = async () => {
+    if (!businessSearchQuery.trim() || !mapLoaded) return
+
+    setIsSearchingBusiness(true)
+    setBusinessSearchResults([])
+    setNoResultsFound(false)
+
+    try {
+      // Clear existing markers
+      if (markersRef.current && markersRef.current.length > 0) {
+        markersRef.current.forEach((marker) => {
+          if (marker && marker.setMap) {
+            marker.setMap(null)
+          }
+        })
+      }
+      markersRef.current = []
+
+      // Get the current map center
+      if (!mapInstanceRef.current) {
+        throw new Error("Map not initialized. Please wait for the map to load.")
+      }
+
+      if (!mapInstanceRef.current.getCenter) {
+        throw new Error("Map instance is not properly initialized. Please refresh the page.")
+      }
+
+      const center = mapInstanceRef.current.getCenter()
+      if (!center) {
+        throw new Error("Could not get map center coordinates. Please try moving the map and try again.")
+      }
+
+      // Validate coordinates
+      const lat = center.lat instanceof Function ? center.lat() : center.lat
+      const lng = center.lng instanceof Function ? center.lng() : center.lng
+
+      if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
+        throw new Error("Invalid map center coordinates. Please try moving the map and try again.")
+      }
+
+      const location = {
+        lat,
+        lng,
+      }
+
+      // Make a request to our server-side API instead of using the client-side Places service
+      const response = await fetch("/api/places-search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: businessSearchQuery,
+          location: { lat: 0, lng: 0 }, // Center of the world
+          radius: 20000000, // 20,000km radius to cover the entire world
+          type: 'establishment',
+          rankby: 'prominence',
+          language: 'en',
+          region: 'world',
+          components: {
+            country: ['world'] // Remove any country restrictions
+          },
+          strictbounds: false, // Allow results outside the specified bounds
+          bounds: {
+            northeast: { lat: 90, lng: 180 },
+            southwest: { lat: -90, lng: -180 }
+          }
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.results && data.results.length > 0) {
+        // Convert Places results to BusinessInfo objects with proper null checks
+        const businesses: BusinessInfo[] = data.results.map((place: any) => {
+          const placeLocation = place.geometry?.location 
+            ? {
+                lat: Number(place.geometry.location.lat),
+                lng: Number(place.geometry.location.lng)
+              }
+            : {
+                lat: 0,
+                lng: 0
+              }
+
+          return {
+            name: place.name || 'Unknown Business',
+            address: place.formatted_address || 'Address not available',
+            placeId: place.place_id || '',
+            location: placeLocation,
+            category: place.types?.[0] || "Business",
+            verified: false,
+            country: place.formatted_address?.split(',').pop()?.trim() || 'Unknown'
+          }
+        })
+
+        setBusinessSearchResults(businesses)
+
+        // Add markers for each result using the Google Maps instance we already have
+        if (window.google && window.google.maps && mapInstanceRef.current) {
+          const newMarkers = businesses.map((business) => {
+            if (!business.location) return null
+
+            const marker = new window.google.maps.Marker({
+              position: business.location,
+              map: mapInstanceRef.current,
+              title: business.name,
+              animation: window.google.maps.Animation.DROP,
+              icon: {
+                path: window.google.maps.SymbolPath.CIRCLE,
+                fillColor: "#4285F4",
+                fillOpacity: 0.7,
+                strokeWeight: 0,
+                scale: 8,
+              },
+            })
+
+            // Add click listener to select the business
+            marker.addListener('click', () => {
+              handleSelectBusiness(business)
+            })
+
+            return marker
+          }).filter(Boolean) // Remove any null markers
+
+          markersRef.current = newMarkers
+        }
+
+        // Center map on first result
+        if (businesses.length > 0 && businesses[0].location) {
+          mapInstanceRef.current.setCenter(businesses[0].location)
+          mapInstanceRef.current.setZoom(14)
+        }
+      } else {
+        console.error("Places search failed or returned no results")
+        setNoResultsFound(true)
+      }
+    } catch (error) {
+      console.error("Error searching businesses:", error)
+      setNoResultsFound(true)
+    } finally {
+      setIsSearchingBusiness(false)
+    }
+  }
+
+  // Search by Place ID
+  const searchByPlaceId = async () => {
+    if (!placeIdInput.trim() || !mapLoaded) return
+
+    setIsSearchingBusiness(true)
+    setNoResultsFound(false)
+
+    try {
+      // Clear existing markers
+      if (markersRef.current && markersRef.current.length > 0) {
+        markersRef.current.forEach((marker) => {
+          if (marker && marker.setMap) {
+            marker.setMap(null)
+          }
+        })
+      }
+      markersRef.current = []
+
+      // Use the Google Maps Places Service directly instead of making an API call
+      // This is more reliable for Place ID lookups
+      if (!window.google || !window.google.maps || !window.google.maps.places) {
+        throw new Error("Google Maps Places API not loaded")
+      }
+
+      if (!placesServiceRef.current && mapInstanceRef.current) {
+        placesServiceRef.current = new window.google.maps.places.PlacesService(mapInstanceRef.current)
+      }
+
+      if (!placesServiceRef.current) {
+        throw new Error("Places service not initialized")
+      }
+
+      // Use the getDetails method of the Places Service
+      placesServiceRef.current.getDetails(
+        {
+          placeId: placeIdInput,
+          fields: ["name", "formatted_address", "geometry", "types", "place_id"],
+        },
+        (place: google.maps.places.PlaceResult, status: google.maps.places.PlacesServiceStatus) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && place) {
+            const business: BusinessInfo = {
+              name: place.name || "Unknown Business",
+              address: place.formatted_address || "No address available",
+              placeId: place.place_id || placeIdInput,
+              location: place.geometry?.location
+                ? {
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                  }
+                : undefined,
+              category: place.types?.[0] || "Business",
+            }
+
+            // Set the selected business
+            setSelectedBusiness(business)
+
+            // Update map to show selected business
+            if (mapInstanceRef.current && window.google && window.google.maps && business.location) {
+              const marker = new window.google.maps.Marker({
+                position: business.location,
+                map: mapInstanceRef.current,
+                title: business.name,
+                animation: window.google.maps.Animation.DROP,
+                icon: {
+                  path: window.google.maps.SymbolPath.CIRCLE,
+                  fillColor: "#4285F4",
+                  fillOpacity: 0.7,
+                  strokeWeight: 2,
+                  scale: 10,
+                },
+              })
+
+              markersRef.current = [marker]
+
+              // Add a circle around the business
+              new window.google.maps.Circle({
+                strokeColor: "#4285F4",
+                strokeOpacity: 0.2,
+                strokeWeight: 2,
+                fillColor: "#4285F4",
+                fillOpacity: 0.05,
+                map: mapInstanceRef.current,
+                center: business.location,
+                radius: 2500, // 2.5km radius
+                zIndex: -1,
+              })
+
+              mapInstanceRef.current.setCenter(business.location)
+              mapInstanceRef.current.setZoom(14)
+            }
+          } else {
+            console.error("Place not found:", status)
+            setNoResultsFound(true)
+          }
+          setIsSearchingBusiness(false)
+        },
+      )
+    } catch (error) {
+      console.error("Error searching by Place ID:", error)
+      setNoResultsFound(true)
+      setIsSearchingBusiness(false)
+    }
+  }
+
+  // Extract Place ID from Google Maps URL
+  const extractPlaceIdFromUrl = (url: string) => {
+    try {
+      const urlObj = new URL(url)
+      // Extract place_id from URL parameters
+      const placeId = urlObj.searchParams.get("place_id")
+      if (placeId) {
+        setPlaceIdInput(placeId)
+        return placeId
+      }
+
+      // Try to extract from URL path
+      const matches = url.match(/\/place\/[^/]+\/([^/?]+)/)
+      if (matches && matches[1]) {
+        setPlaceIdInput(matches[1])
+        return matches[1]
+      }
+
+      return null
+    } catch (error) {
+      console.error("Invalid URL:", error)
+      return null
+    }
+  }
+
+  // Search by Google Maps URL
+  const searchByMapUrl = () => {
+    if (!mapUrlInput.trim()) return
+
+    const placeId = extractPlaceIdFromUrl(mapUrlInput)
+    if (placeId) {
+      searchByPlaceId()
+    } else {
+      setNoResultsFound(true)
+    }
+  }
+
+  // Load Google Business Profile listings from Supabase
+  const loadGbpListings = async () => {
+    setIsLoadingGbp(true)
+    try {
+      // Fetch real business listings from Supabase
+      const { data, error } = await supabase.from("businesses").select("*").order("id", { ascending: false }).limit(10)
+
+      if (error) {
+        console.error("Error fetching GBP listings:", error)
+        throw error
+      }
+
+      if (data && data.length > 0) {
+        // Convert to BusinessInfo format
+        const listings: BusinessInfo[] = data.map((business) => ({
+          name: business.name,
+          address: business.address,
+          placeId: business.place_id,
+          location: {
+            lat: Number(business.lat),
+            lng: Number(business.lng),
+          },
+          category: business.category,
+          verified: true, // Assume all businesses in our database are verified
+        }))
+
+        setGbpListings(listings)
+      } else {
+        // If no data, set empty array
+        setGbpListings([])
+      }
+    } catch (error) {
+      console.error("Error loading GBP listings:", error)
+      setGbpListings([])
+    } finally {
+      setIsLoadingGbp(false)
+    }
+  }
+
+  // Load GBP listings when the business source is set to "my-gbp"
+  useEffect(() => {
+    if (businessSource === "my-gbp") {
+      loadGbpListings()
+    }
+  }, [businessSource])
+
+  // Select a business
+  const handleSelectBusiness = (business: BusinessInfo) => {
+    setSelectedBusiness(business)
+
+    // Update map to show selected business
+    if (mapLoaded && mapInstanceRef.current && window.google && business.location) {
+      // Clear existing markers
+      if (markersRef.current && markersRef.current.length > 0) {
+        markersRef.current.forEach((marker) => {
+          if (marker && marker.setMap) {
+            marker.setMap(null)
+          }
+        })
+      }
+      markersRef.current = []
+
+      // Add marker for selected business
+      const marker = new window.google.maps.Marker({
+        position: business.location,
+        map: mapInstanceRef.current,
+        title: business.name,
+        animation: window.google.maps.Animation.DROP,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          fillColor: "#4285F4",
+          fillOpacity: 0.7,
+          strokeWeight: 2,
+          scale: 10,
+        },
+      })
+
+      markersRef.current = [marker]
+
+      // Add a circle around the business
+      new window.google.maps.Circle({
+        strokeColor: "#4285F4",
+        strokeOpacity: 0.2,
+        strokeWeight: 2,
+        fillColor: "#4285F4",
+        fillOpacity: 0.05,
+        map: mapInstanceRef.current,
+        center: business.location,
+        radius: 2500, // 2.5km radius
+        zIndex: -1,
+      })
+
+      mapInstanceRef.current.setCenter(business.location)
+      mapInstanceRef.current.setZoom(14)
+    }
+  }
+
+  // Handle business source change
+  const handleBusinessSourceChange = (value: string) => {
+    setBusinessSource(value)
+    setSelectedBusiness(null)
+    setBusinessSearchQuery("")
+    setBusinessSearchResults([])
+    setPlaceIdInput("")
+    setMapUrlInput("")
+    setNoResultsFound(false)
+  }
+
+  // Start geogrid search
+  const startGeoGridSearch = async () => {
+    if (!selectedBusiness || !searchTerm || !selectedBusiness.location) {
+      alert("Please select a business and enter a search term")
+      return
+    }
+
+    setIsSearching(true)
+    setSearchProgress(0)
+    setLoadingStep("Initializing search...")
+
+    try {
+      // Simulate search progress
+      const updateProgress = () => {
+        setSearchProgress((prev) => {
+          const newProgress = prev + Math.random() * 15
+          return newProgress > 100 ? 100 : newProgress
+        })
+      }
+
+      // Step 1: Initialize
+      updateProgress()
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      setLoadingStep("Analyzing business location...")
+
+      // Step 2: Analyze location
+      updateProgress()
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      setLoadingStep("Generating grid points...")
+
+      // Step 3: Generate grid
+      updateProgress()
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+      setLoadingStep("Fetching search rankings...")
+
+      // Generate grid points
+      const currentGridSize = Number.parseInt(gridSize.split("x")[0])
+      const gridPoints = generateGridPoints(
+        { lat: selectedBusiness.location.lat, lng: selectedBusiness.location.lng },
+        currentGridSize,
+        Number.parseFloat(gridDistance)
+      )
+
+      // Step 4: Fetch real rankings
+      updateProgress()
+      const rankings = await fetchRankingData(
+        searchTerm,
+        selectedBusiness.name,
+        gridPoints
+      )
+
+      // Convert rankings to grid format
+      const gridData = Array(currentGridSize)
+        .fill(0)
+        .map((_, rowIndex) =>
+          Array(currentGridSize)
+            .fill(0)
+            .map((_, colIndex) => {
+              const index = rowIndex * currentGridSize + colIndex
+              return rankings[index] || 21
+            })
+        )
+
+      // Step 5: Calculate metrics
+      updateProgress()
+      setLoadingStep("Calculating metrics...")
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      // Calculate metrics
+      const flattenedValues = gridData.flat()
+      const avgRanking = flattenedValues.reduce((sum, val) => sum + (val > 20 ? 21 : val), 0) / flattenedValues.length
+      const topRankings = flattenedValues.filter((val) => val <= 20)
+      const avgTopRanking =
+        topRankings.length > 0 ? topRankings.reduce((sum, val) => sum + val, 0) / topRankings.length : 0
+      const solvPercentage = Math.round(
+        (flattenedValues.filter((val) => val <= 3).length / flattenedValues.length) * 100,
+      )
+
+      // Function to fetch and display nearby businesses for a grid point
+      const showNearbyBusinesses = async (lat: number, lng: number, gridIndex: number) => {
+        try {
+          const response = await fetch('/api/places-search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: searchTerm || 'restaurant', // Use current search term or default
+              location: { lat, lng },
+              radius: 1000, // 1km radius to show nearby businesses
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          if (!data.results || data.results.length === 0) {
+            return `<div class="p-3">
+              <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+              <p class="text-sm mt-1">No businesses found for "${searchTerm || 'restaurant'}"</p>
+              <p class="text-xs mt-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+              <p class="text-xs">Distance: ${gridDistance}km from center</p>
+            </div>`;
+          }
+
+          // Find the selected business in the results
+          const businessIndex = data.results.findIndex(
+            (result: any) => selectedBusiness && result.name.toLowerCase().includes(selectedBusiness.name.toLowerCase())
+          );
+
+          let content = `<div class="p-3">
+            <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+            <p class="text-sm mt-1">Search: "${searchTerm || 'restaurant'}"</p>
+            <p class="text-xs mb-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+            <div class="border-t pt-2">
+              <h4 class="font-bold text-sm">Top Results:</h4>
+              <ul class="mt-1 space-y-1 text-xs">`;
+
+          // Show top 5 results
+          const topResults = data.results.slice(0, 5);
+          topResults.forEach((place: any, idx: number) => {
+            const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
+            content += `<li class="${isTarget ? 'font-bold text-blue-600' : ''}">${idx + 1}. ${place.name} ${isTarget ? '(Your Business)' : ''}</li>`;
+          });
+
+          content += `</ul>`;
+
+          // Add business ranking info
+          if (selectedBusiness) {
+            if (businessIndex >= 0) {
+              content += `<p class="mt-2 font-bold text-sm">${selectedBusiness.name} ranks #${businessIndex + 1} here</p>`;
+            } else {
+              content += `<p class="mt-2 text-sm">${selectedBusiness.name} not found in top 20 results</p>`;
+            }
+          }
+
+          content += `</div>`;
+          return content;
+
+        } catch (error) {
+          console.error('Error fetching nearby businesses:', error);
+          return `<div class="p-3">
+            <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+            <p class="text-sm text-red-600">Error loading data</p>
+            <p class="text-xs mt-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
+          </div>`;
+        }
+      };
+
+      // Update the grid markers with ranking information
+      if (gridOverlay && gridOverlay.length > 0) {
+        let markerIndex = 0;
+        for (let i = 0; i < currentGridSize; i++) {
+          for (let j = 0; j < currentGridSize; j++) {
+            // Skip center marker
+            if (i === Math.floor(currentGridSize / 2) && j === Math.floor(currentGridSize / 2)) {
+              markerIndex++;
+              continue;
+            }
+            
+            // Get the marker and ranking
+            const marker = gridOverlay[markerIndex];
+            const ranking = gridData[i][j];
+            
+            // Update marker appearance based on ranking
+            if (marker) {
+              // Choose color and size based on ranking
+              let color, size, strokeColor, strokeWeight, zIndex;
+              
+              if (ranking <= 3) {
+                color = "#4CAF50"; // Green for top 3
+                size = 16;
+                strokeColor = "#FFFFFF";
+                strokeWeight = 2;
+                zIndex = 4;
+              } else if (ranking <= 7) {
+                color = "#8BC34A"; // Light green for top 7
+                size = 14;
+                strokeColor = "#FFFFFF";
+                strokeWeight = 1.5;
+                zIndex = 3;
+              } else if (ranking <= 10) {
+                color = "#FFC107"; // Yellow for top 10
+                size = 12;
+                strokeColor = "#FFFFFF";
+                strokeWeight = 1.5;
+                zIndex = 2;
+              } else if (ranking <= 15) {
+                color = "#FF9800"; // Orange for top 15
+                size = 10;
+                strokeColor = "#FFFFFF";
+                strokeWeight = 1;
+                zIndex = 1;
+              } else {
+                color = "#F44336"; // Red for not found or low ranking
+                size = 8;
+                strokeColor = "#FFFFFF";
+                strokeWeight = 1;
+                zIndex = 0;
+              }
+              
+              // Update marker icon and label
+              marker.setIcon({
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: color,
+                fillOpacity: 0.85,
+                strokeColor: strokeColor,
+                strokeWeight: strokeWeight,
+                scale: size,
+                labelOrigin: new google.maps.Point(0, 0)
+              });
+              
+              // Set the label to show the ranking
+              if (ranking <= 20) {
+                marker.setLabel({
+                  text: ranking.toString(),
+                  color: "#FFFFFF",
+                  fontFamily: "LocalVikingAlt, sans-serif",
+                  fontSize: "11px",
+                  fontWeight: "bold"
+                });
+              } else {
+                // For rankings > 20, don't show a number
+                marker.setLabel({
+                  text: "×",
+                  color: "#FFFFFF",
+                  fontFamily: "LocalVikingAlt, sans-serif",
+                  fontSize: "10px",
+                  fontWeight: "bold"
+                });
+              }
+              
+              // Update marker title and z-index
+              marker.setTitle(`Rank: ${ranking <= 20 ? ranking : 'Not Found'}`);
+              marker.setZIndex(zIndex);
+              
+              // Store ranking in marker for info window access
+              (marker as any).ranking = ranking;
+              
+              // Update the click handler to show ranking information
+              google.maps.event.clearListeners(marker, 'click');
+              marker.addListener('click', function() {
+                // Create info window if not exists
+                const infoWindow = new google.maps.InfoWindow();
+                
+                // Set content with ranking info
+                infoWindow.setContent(`
+                  <div style="padding: 16px; max-width: 300px; font-family: 'LocalVikingAlt', sans-serif;">
+                    <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 18px;">Search Results</h3>
+                    <p style="margin: 4px 0; font-size: 14px;">Keyword: "${searchTerm}"</p>
+                    <div style="display: flex; align-items: center; margin: 12px 0; background-color: ${color}20; padding: 10px; border-radius: 6px;">
+                      <div style="width: 30px; height: 30px; border-radius: 50%; background-color: ${color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 10px;">
+                        ${ranking <= 20 ? ranking : '×'}
+                      </div>
+                      <div>
+                        <p style="margin: 0; font-weight: bold; font-size: 15px;">
+                          ${ranking <= 20 
+                            ? `Your business ranks #${ranking} here` 
+                            : 'Your business not found in top 20'}
+                        </p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
+                          Grid position: Row ${i+1}, Column ${j+1}
+                        </p>
+                      </div>
+                    </div>
+                    <button id="view-details-${markerIndex}" style="background-color: #4285F4; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; font-family: 'LocalVikingAlt', sans-serif;">
+                      View Detailed Results
+                    </button>
+                  </div>
+                `);
+                
+                // Open info window
+                infoWindow.open(mapInstanceRef.current, marker);
+                
+                // Add event listener for the button
+                google.maps.event.addListener(infoWindow, 'domready', function() {
+                  const button = document.getElementById(`view-details-${markerIndex}`);
+                  if (button) {
+                    button.addEventListener('click', async function() {
+                      console.log("Fetching detailed results...");
+                      
+                      infoWindow.setContent(`
+                        <div style="padding: 12px; text-align: center;">
+                          <p>Loading detailed results...</p>
+                          <div class="loading-spinner" style="margin: 10px auto;"></div>
+                        </div>
+                      `);
+                      
+                      try {
+                        // Get the marker position
+                        const position = marker.getPosition();
+                        if (!position) throw new Error("Invalid marker position");
+                        
+                        const lat = position.lat();
+                        const lng = position.lng();
+                        
+                        // Fetch nearby businesses
+                        const response = await fetch('/api/places-search', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            query: searchTerm,
+                            location: { lat, lng },
+                            radius: 2000, // 2km radius
+                          }),
+                        });
+                        
+                        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+                        
+                        const data = await response.json();
+                        
+                        // Create detailed content
+                        let content = `
+                          <div style="padding: 16px; max-width: 320px; font-family: 'LocalVikingAlt', sans-serif;">
+                            <h3 style="font-weight: bold; margin: 0 0 8px 0;">Local Search Results</h3>
+                            <p style="margin: 0 0 12px 0; font-size: 14px;">
+                              Keyword: "${searchTerm}" at this location
+                            </p>
+                        `;
+                        
+                        if (data.results && data.results.length > 0) {
+                          content += `<div style="margin-top: 8px;"><strong>Top Businesses:</strong></div>
+                          <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+                            <tr style="background-color: #f3f4f6;">
+                              <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Rank</th>
+                              <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Business</th>
+                              <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Rating</th>
+                            </tr>`;
+                          
+                          // Show top 10 results
+                          const topResults = data.results.slice(0, 10);
+                          topResults.forEach((place: any, idx: number) => {
+                            const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
+                            const backgroundColor = isTarget ? '#4285F420' : (idx % 2 === 0 ? '#ffffff' : '#f9fafb');
+                            const fontWeight = isTarget ? 'bold' : 'normal';
+                            const nameColor = isTarget ? '#4285F4' : '#000000';
+                            
+                            content += `
+                              <tr style="background-color: ${backgroundColor};">
+                                <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;">${idx + 1}</td>
+                                <td style="padding: 6px; border-bottom: 1px solid #e5e7eb; font-weight: ${fontWeight}; color: ${nameColor};">
+                                  ${place.name} ${isTarget ? '(Your Business)' : ''}
+                                </td>
+                                <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;">
+                                  ${place.rating ? `${place.rating} ★` : 'N/A'}
+                                </td>
+                              </tr>
+                            `;
+                          });
+                          
+                          content += `</table>`;
+                        } else {
+                          content += `<p style="margin-top: 12px;">No businesses found for this search.</p>`;
+                        }
+                        
+                        content += `</div>`;
+                        infoWindow.setContent(content);
+                        
+                      } catch (error) {
+                        console.error('Error fetching detailed results:', error);
+                        infoWindow.setContent(`
+                          <div style="padding: 12px; max-width: 240px;">
+                            <h3 style="font-weight: bold; margin: 0 0 8px 0;">Error</h3>
+                            <p style="color: #EA4335;">Failed to load detailed data. Please try again.</p>
+                          </div>
+                        `);
+                      }
+                    });
+                  }
+                });
+              }
+              
+              // Increment marker index
+              markerIndex += 1;
+            }
+          }
+        }
+      }
+
+      // Save the result to database
+      if (!selectedBusiness?.location) {
+        throw new Error("Business location is required");
+      }
+      
+      // Create the result object
+      const result = await saveGridResult({
+        businessInfo: {
+          name: selectedBusiness.name,
+          address: selectedBusiness.address,
+          location: selectedBusiness.location,
+          placeId: selectedBusiness.placeId,
+          category: selectedBusiness.category
+        },
+        searchTerm,
+        createdAt: new Date().toISOString(),
+        gridSize: gridSize,
+        gridData,
+        metrics: {
+          agr: avgRanking,
+          atgr: avgTopRanking,
+          solv: `${solvPercentage}%`,
+          averageRank: avgRanking,
+          visibilityPercentage: solvPercentage,
+          top20AverageRank: avgTopRanking
+        },
+        googleRegion,
+        distanceKm: Number.parseFloat(gridDistance)
+      });
+      
+      // Add the result to history
+      setHistoryResults(prev => [result, ...prev]);
+      
+      toast({
+        title: "Success",
+        description: "GeoGrid search completed and results saved",
+        variant: "default"
+      });
+      
+    } catch (error) {
+      console.error("Error starting geogrid search:", error)
+      toast({
+        title: "Error",
+        description: "An error occurred during the GeoGrid search. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSearching(false)
+      setSearchProgress(0)
+    }
+  }
+
+  // Save config
+  const saveConfig = () => {
+    if (!configName.trim()) {
+      alert("Please enter a configuration name")
+      return
+    }
+
+    alert(`Configuration "${configName}" saved successfully!`)
+    setConfigName("")
+    setShowSettingsDialog(false)
+  }
+
+  // Render different business source inputs based on selection
+  const renderBusinessSourceInput = () => {
+    if (selectedBusiness) {
+      return (
+        <div className="p-4 border rounded-md bg-blue-50 shadow-sm">
+          <div className="font-medium text-blue-700">{selectedBusiness.name}</div>
+          <div className="text-sm text-gray-600 flex items-center mt-1">
+            <MapPin className="h-3 w-3 mr-1 text-blue-500" />
+            {selectedBusiness.address}
+          </div>
+          <Button
+            variant="outline"
+            className="text-blue-600 mt-2 border border-blue-200"
+            onClick={() => setSelectedBusiness(null)}
+          >
+            Change business
+          </Button>
+        </div>
+      )
+    }
+
+    switch (businessSource) {
+      case "google-search":
+        return (
+          <div className="space-y-4">
+            <div className="relative w-full">
+              <div className="flex space-x-2">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Search for a business..."
+                    value={businessSearchQuery}
+                    onChange={(e) => {
+                      setBusinessSearchQuery(e.target.value)
+                      handleInputChange(e.target.value)
+                    }}
+                    className="shadow-sm w-full pr-10"
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    {isSearchingBusiness ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {showPredictions && predictions.length > 0 && (
+                <div className="mt-2 rounded-lg border border-gray-200">
+                  <div style={{ maxHeight: '195px' }} className="overflow-y-auto">
+                    {predictions.slice(0, predictions.length).map((prediction) => (
+                      <div
+                        key={prediction.place_id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handlePredictionSelect(prediction)}
+                      >
+                        <div className="p-4 border-b border-gray-100 last:border-b-0">
+                          <div className="text-blue-600 font-medium">
+                            {prediction.structured_formatting.main_text}
+                          </div>
+                          <div className="flex items-center text-gray-500 text-sm mt-1">
+                            <MapPin className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+                            {prediction.structured_formatting.secondary_text}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {noResultsFound && (
+              <div className="p-3 border border-amber-200 bg-amber-50 rounded-md">
+                <div className="flex items-start">
+                  <Info className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">No results found</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Try adjusting your search terms or zooming the map to a different area.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {businessSearchResults.length > 0 && (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {businessSearchResults.map((business, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border rounded-md cursor-pointer hover:bg-blue-50 transition-colors shadow-sm"
+                    onClick={() => handleSelectBusiness(business)}
+                  >
+                    <div className="font-medium text-blue-700">{business.name}</div>
+                    <div className="text-sm text-gray-600 flex items-center mt-1">
+                      <MapPin className="h-3 w-3 mr-1 text-blue-500" />
+                      {business.address}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      case "my-gbp":
+        return (
+          <div className="space-y-4">
+            {isLoadingGbp ? (
+              <div className="p-8 text-center">
+                <Loader2 className="h-8 w-8 mx-auto animate-spin text-blue-600 mb-4" />
+                <p className="text-gray-500">Loading your business listings...</p>
+              </div>
+            ) : gbpListings.length > 0 ? (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {gbpListings.map((business, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border rounded-md cursor-pointer hover:bg-blue-50 transition-colors shadow-sm flex items-center"
+                    onClick={() => handleSelectBusiness(business)}
+                  >
+                    <div className="w-12 h-12 rounded-md bg-gray-100 mr-3 flex-shrink-0 overflow-hidden">
+                      <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600">
+                        <Store className="h-6 w-6" />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <div className="font-medium text-blue-700">{business.name}</div>
+                        {business.verified && (
+                          <div className="ml-2 bg-green-100 text-green-800 text-xs px-1.5 py-0.5 rounded-full flex items-center">
+                            <Check className="h-3 w-3 mr-0.5" />
+                            Verified
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-600 flex items-center mt-1">
+                        <MapPin className="h-3 w-3 mr-1 text-blue-500" />
+                        {business.address}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">{business.category}</div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-gray-400 ml-2" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 border rounded-md bg-gray-50 text-center shadow-sm">
+                <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                  <Store className="h-6 w-6 text-blue-600" />
+                </div>
+                <p className="text-sm text-gray-600 mb-2">No business listings found</p>
+                <p className="text-xs text-gray-500 mb-4">Add a business using the Google search option first</p>
+                <Button
+                  variant="outline"
+                  className="text-blue-600 border border-blue-200"
+                  onClick={() => setBusinessSource("google-search")}
+                >
+                  Switch to Google Search
+                </Button>
+              </div>
+            )}
+          </div>
+        )
+      case "place-id":
+        return (
+          <div className="space-y-4">
+            <div className="flex space-x-2">
+              <Input
+                placeholder="Enter Google Place ID..."
+                value={placeIdInput}
+                onChange={(e) => setPlaceIdInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && searchByPlaceId()}
+                className="shadow-sm"
+              />
+              <Button
+                onClick={searchByPlaceId}
+                disabled={isSearchingBusiness || !placeIdInput.trim() || !mapLoaded}
+                className="bg-blue-600 hover:bg-blue-700 shadow-sm border border-blue-700"
+              >
+                {isSearchingBusiness ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            <div className="flex items-start">
+              <Info className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-xs text-gray-600">
+                You can find a Place ID by searching for the location on Google Maps and looking at the URL. Example:{" "}
+                <span className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">ChIJN1t_tDeuEmsRUsoyG83frY4</span>
+              </p>
+            </div>
+
+            {noResultsFound && (
+              <div className="p-3 border border-amber-200 bg-amber-50 rounded-md">
+                <div className="flex items-start">
+                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">Invalid Place ID</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      The Place ID you entered could not be found. Please check and try again.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      case "map-url":
+        return (
+          <div className="space-y-4">
+            <div className="flex space-x-2">
+              <Input
+                placeholder="Paste Google Maps URL..."
+                value={mapUrlInput}
+                onChange={(e) => setMapUrlInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && searchByMapUrl()}
+                className="shadow-sm"
+              />
+              <Button
+                onClick={searchByMapUrl}
+                disabled={isSearchingBusiness || !mapUrlInput.trim()}
+                className="bg-blue-600 hover:bg-blue-700 shadow-sm border border-blue-700"
+              >
+                {isSearchingBusiness ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            <div className="flex items-start">
+              <Info className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-xs text-gray-600">
+                Copy the URL from Google Maps when you've found your business location. Example:{" "}
+                <span className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded truncate block mt-1">
+                  https://www.google.com/maps/place/...
+                </span>
+              </p>
+            </div>
+
+            {noResultsFound && (
+              <div className="p-3 border border-amber-200 bg-amber-50 rounded-md">
+                <div className="flex items-start">
+                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">Invalid URL</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Could not extract a valid Place ID from this URL. Please make sure you're using a Google Maps URL
+                      for a specific place.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })
+  }
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    if (value === "new-geogrid") {
+      // Reset map state
+      setMapLoaded(false)
+      setMapError(null)
+      // Clear existing map elements
+      if (markersRef.current) {
+        markersRef.current.forEach(marker => marker.setMap(null))
+        markersRef.current = []
+      }
+      if (gridOverlay.length > 0) {
+        gridOverlay.forEach(marker => marker.setMap(null))
+        setGridOverlay([])
+      }
+      mapInstanceRef.current = null
+      placesServiceRef.current = null
+      // Force map reinitialization
+      setTimeout(() => {
+        if (mapRef.current) {
+          initMap()
+        }
+      }, 100)
+    }
+  }
+
+  // Only initialize map after user responds to location dialog
+  useEffect(() => {
+    if (!showLocationDialog && !mapLoaded) {
+      initMap();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLocationDialog]);
+
+  // Utility to get user location with browser geolocation
+  const getUserLocationWithBrowser = () => {
+    return new Promise<{ lat: number; lng: number }>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation not supported'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          console.log('Got browser location:', location);
+          resolve(location);
+        },
+        (error) => {
+          console.error('Browser location error:', error);
+          reject(error);
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    });
+  };
+
+  // Function to center map on location
+  const centerMapOnLocation = (location: { lat: number; lng: number }) => {
+    if (!mapInstanceRef.current) return;
+    
+    console.log('Centering map on location:', location);
+    
+    // Center the map
+    mapInstanceRef.current.setCenter(location);
+    mapInstanceRef.current.setZoom(13);
+
+    // Clear existing location marker
+    if (locationMarker) {
+      locationMarker.setMap(null);
+    }
+
+    // Add a marker for user location
+    if (window.google && window.google.maps) {
+      const marker = new window.google.maps.Marker({
+        position: location,
+        map: mapInstanceRef.current,
+        title: 'Your Location',
+        animation: window.google.maps.Animation.DROP,
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: '#4285F4',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        }
+      });
+      setLocationMarker(marker);
+    }
+  };
+
+
+  // Get user location directly
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          console.log('Got user location:', userLocation);
+          
+          // Center map on user location if map is loaded
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setCenter(userLocation);
+            mapInstanceRef.current.setZoom(13);
+            
+            // Add a marker for the user's location
+            new google.maps.Marker({
+              position: userLocation,
+              map: mapInstanceRef.current,
+              title: 'Your Location',
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#4285F4',
+                fillOpacity: 1,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
+              }
+            });
+          }
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+        }
+      );
+    }
+  }, [mapLoaded]);
+
+  // Add this function before the return statement
+  const saveSettings = () => {
+    localStorage.setItem("geogrid-settings", JSON.stringify(settings));
+    // Apply settings
+    setGridSize(settings.defaultGridSize);
+    setGridDistance(settings.defaultDistance);
+    // Update theme
+    document.documentElement.classList.toggle("dark", settings.darkMode);
+    setShowSettingsDialog(false);
+    toast({
+      title: "Settings saved",
+      description: "Your preferences have been updated.",
+    });
+  };
+
+  return (
+    <div className="container mx-auto py-20 px-4">
+      <div className="flex justify-end mb-6 mt-4">
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="flex gap-2 p-0 shadow-md">
+            <TabsTrigger
+              value="new-geogrid"
+              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
+              title="New GeoGrid"
+            >
+              <Plus className="h-5 w-5" />
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
+              title="History"
+            >
+              <Clock className="h-5 w-5" />
+            </TabsTrigger>
+            <TabsTrigger
+              value="config-geogrids"
+              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
+              title="Config's GeoGrids"
+            >
+              <Settings className="h-5 w-5" />
+            </TabsTrigger>
+            <TabsTrigger
+              value="edit-config"
+              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
+              title="Edit Config"
+            >
+              <Edit className="h-5 w-5" />
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <TabsContent value="new-geogrid" className="mt-6">
+          {isSearching ? (
+            <div className="flex flex-col items-center justify-center py-16 animate-slide-up">
+              <div className="w-20 h-20 mb-6 relative">
+                <div className="absolute top-0 left-0 w-full h-full rounded-full border-4 border-t-blue-600 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                <div className="absolute top-1 left-1 w-18 h-18 rounded-full border-4 border-t-transparent border-r-indigo-600 border-b-transparent border-l-transparent animate-spin animation-delay-150"></div>
+                <div className="absolute top-2 left-2 w-16 h-16 rounded-full border-4 border-t-transparent border-r-transparent border-b-purple-600 border-l-transparent animate-spin animation-delay-300"></div>
+                <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                  <Target className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+
+              <h3 className="text-xl font-bold mb-2 gradient-text">GeoGrid Search in Progress</h3>
+              <p className="text-gray-600 mb-6 text-center max-w-md">{loadingStep}</p>
+
+              <div className="w-full max-w-md h-2 bg-gray-200 rounded-full mb-2 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-300"
+                  style={{ width: `${searchProgress}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-gray-500">{Math.round(searchProgress)}% complete</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1 space-y-6">
+                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md gradient-border max-h-[80vh] overflow-y-auto">
+                  <div className="flex items-center mb-4">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                      <MapPin className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold">Select Business</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <div className="flex space-x-2">
+                        <Input
+                          placeholder="Search for a business..."
+                          value={businessSearchQuery}
+                          onChange={(e) => {
+                            setBusinessSearchQuery(e.target.value)
+                            handleInputChange(e.target.value)
+                          }}
+                          className="shadow-sm w-full pr-10"
+                        />
+                        <Button
+                          className="bg-blue-600 hover:bg-blue-700 px-3"
+                          size="icon"
+                          onClick={searchBusinesses}
+                        >
+                          <Search className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      {showPredictions && predictions.length > 0 && (
+                        <div className="mt-2 rounded-lg border border-gray-200">
+                          <div style={{ maxHeight: '195px' }} className="overflow-y-auto">
+                            {predictions.slice(0, predictions.length).map((prediction) => (
+                              <div
+                                key={prediction.place_id}
+                                className="hover:bg-gray-50 cursor-pointer"
+                                onClick={() => handlePredictionSelect(prediction)}
+                              >
+                                <div className="p-4 border-b border-gray-100 last:border-b-0">
+                                  <div className="text-blue-600 font-medium">
+                                    {prediction.structured_formatting.main_text}
+                                  </div>
+                                  <div className="flex items-center text-gray-500 text-sm mt-1">
+                                    <MapPin className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
+                                    {prediction.structured_formatting.secondary_text}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md gradient-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                        <Search className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold">Search Term</h3>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setShowSearchTermInfo(!showSearchTermInfo)}
+                    >
+                      <HelpCircle className="h-4 w-4 text-blue-500" />
+                    </Button>
+                  </div>
+
+                  {showSearchTermInfo && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
+                      <h4 className="font-medium text-blue-700 mb-2 flex items-center">
+                        <Info className="h-4 w-4 mr-1" />
+                        What is a Search Term in GeoGrid?
+                      </h4>
+                      <p className="text-gray-700 mb-2">
+                        A <strong>search term</strong> is the Google Maps keyword a potential customer would use to find
+                        businesses like yours locally.
+                      </p>
+                      <p className="text-gray-700 mb-2">
+                        Examples: "Massage therapist", "Pizza near me", "Dog walker Stockholm"
+                      </p>
+                      <p className="text-gray-700">
+                        The GeoGrid tool simulates these searches from multiple points around your business to show how
+                        your ranking varies by location.
+                      </p>
+                    </div>
+                  )}
+
+                  <Input
+                    placeholder="Enter a search term (e.g. 'Pizza', 'Plumber', 'Coffee shop')"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="shadow-sm"
+                  />
+                </div>
+
+                <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md gradient-border">
+                  <div className="flex items-center mb-4">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                      <MapPin className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold">Google Region</h3>
+                  </div>
+                  <RadioGroup value={googleRegion} onValueChange={setGoogleRegion} className="flex space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="global" id="global" />
+                      <Label htmlFor="global">Global</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="local" id="local" />
+                      <Label htmlFor="local">Local</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700 border border-blue-700"
+                  size="lg"
+                  onClick={startGeoGridSearch}
+                  disabled={!selectedBusiness || !searchTerm}
+                >
+                  <Search className="mr-2 h-4 w-4" />
+                  Search
+                </Button>
+              </div>
+
+              <div className="lg:col-span-2">
+                <div className="border rounded-md overflow-hidden h-[600px] bg-gray-100 relative">
+                  {mapError ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <div className="text-red-500 mb-2">Failed to load Google Maps</div>
+                        <Button onClick={() => window.location.reload()} className="border border-blue-700">
+                          Retry
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="absolute top-4 right-4 flex gap-2 z-10">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm"
+                            >
+                              <Target className="h-4 w-4 mr-2" />
+                              Grid Size: {gridSize}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-56">
+                            {[3, 5, 7, 9, 11, 13].map((size) => (
+                              <DropdownMenuItem
+                                key={size}
+                                onClick={() => setGridSize(`${size}x${size}`)}
+                                className="flex items-center justify-between"
+                              >
+                                {size}x{size}
+                                {gridSize === `${size}x${size}` && (
+                                  <Check className="h-4 w-4 text-blue-500" />
+                                )}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-white/90 backdrop-blur-sm border border-gray-200 shadow-sm"
+                            >
+                              <MapPin className="h-4 w-4 mr-2" />
+                              Coverage: {gridDistance}km
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-56">
+                            {[
+                              { value: "0.1", label: "100m" },
+                              { value: "0.5", label: "500m" },
+                              { value: "1", label: "1km" },
+                              { value: "2", label: "2km" },
+                              { value: "5", label: "5km" },
+                              { value: "10", label: "10km" },
+                              { value: "15", label: "15km" },
+                              { value: "20", label: "20km" },
+                              { value: "25", label: "25km" },
+                            ].map((item) => (
+                              <DropdownMenuItem
+                                key={item.value}
+                                onClick={() => setGridDistance(item.value)}
+                                className="flex items-center justify-between"
+                              >
+                                {item.label}
+                                {gridDistance === item.value && (
+                                  <Check className="h-4 w-4 text-blue-500" />
+                                )}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <div ref={mapRef} className="w-full h-full" />
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-6">
+          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold">Search History</h3>
+              </div>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm" className="border border-gray-300">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filter
+                </Button>
+                <Button variant="outline" size="sm" className="border border-gray-300">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
+
+            {isLoadingHistory ? (
+              <div className="py-8 text-center">
+                <Loader2 className="h-8 w-8 mx-auto animate-spin text-blue-600 mb-4" />
+                <p className="text-gray-500">Loading history...</p>
+              </div>
+            ) : historyResults.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                <h4 className="text-lg font-medium text-gray-700 mb-2">No search history yet</h4>
+                <p className="text-gray-500 mb-6">Your GeoGrid search history will appear here</p>
+                <Button
+                  onClick={() => setActiveTab("new-geogrid")}
+                  className="bg-blue-600 hover:bg-blue-700 border border-blue-700"
+                >
+                  Create Your First GeoGrid
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {historyResults.map((result, index) => (
+                  <Card key={index} className="overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-blue-700">{result.businessInfo.name}</CardTitle>
+                          <CardDescription className="flex items-center">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {result.businessInfo.address}
+                          </CardDescription>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium">{formatDate(result.createdAt)}</div>
+                          <div className="text-xs text-gray-500">Search term: {result.searchTerm}</div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-2">
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div className="bg-blue-50 p-2 rounded">
+                          <div className="text-xs text-slate-500">AGR:</div>
+                          <div className="font-medium">{result.metrics.agr.toFixed(1)}</div>
+                        </div>
+                        <div className="bg-purple-50 p-2 rounded">
+                          <div className="text-xs text-slate-500">ATGR:</div>
+                          <div className="font-medium">{result.metrics.atgr.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-green-50 p-2 rounded">
+                          <div className="text-xs text-slate-500">SoLV:</div>
+                          <div className="font-medium">{result.metrics.solv}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between pt-2">
+                      <Button variant="ghost" size="sm" className="text-blue-600">
+                        View Details
+                      </Button>
+                      <div className="flex space-x-1">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Repeat className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="config-geogrids" className="mt-6">
+          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                  <Settings className="h-5 w-5 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold">Saved Configurations</h3>
+              </div>
+              <Button className="bg-blue-600 hover:bg-blue-700 border border-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                New Configuration
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Default Configuration */}
+              <Card className={`border ${selectedConfig === "default" ? "border-blue-500" : "border-gray-200"}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Default Configuration</CardTitle>
+                  <CardDescription>Standard 13x13 grid with 2.5km spacing</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Grid Size:</span>
+                      <span className="font-medium">13x13</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Distance:</span>
+                      <span className="font-medium">2.5 km</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Region:</span>
+                      <span className="font-medium">Global</span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Button
+                    variant="outline"
+                    className="w-full border border-blue-200"
+                    onClick={() => setSelectedConfig("default")}
+                  >
+                    {selectedConfig === "default" ? "Selected" : "Select"}
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              {/* Custom Configuration 1 */}
+              <Card className={`border ${selectedConfig === "custom1" ? "border-blue-500" : "border-gray-200"}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Dense Grid</CardTitle>
+                  <CardDescription>High-density 21x21 grid with 1km spacing</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Grid Size:</span>
+                      <span className="font-medium">21x21</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Distance:</span>
+                      <span className="font-medium">1 km</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Region:</span>
+                      <span className="font-medium">Local</span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Button
+                    variant="outline"
+                    className="w-full border border-blue-200"
+                    onClick={() => setSelectedConfig("custom1")}
+                  >
+                    {selectedConfig === "custom1" ? "Selected" : "Select"}
+                  </Button>
+                </CardFooter>
+              </Card>
+
+              {/* Custom Configuration 2 */}
+              <Card className={`border ${selectedConfig === "custom2" ? "border-blue-500" : "border-gray-200"}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Wide Area</CardTitle>
+                  <CardDescription>9x9 grid with 5km spacing for broader coverage</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Grid Size:</span>
+                      <span className="font-medium">9x9</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Distance:</span>
+                      <span className="font-medium">5 km</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Region:</span>
+                      <span className="font-medium">Global</span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Button
+                    variant="outline"
+                    className="w-full border border-blue-200"
+                    onClick={() => setSelectedConfig("custom2")}
+                  >
+                    {selectedConfig === "custom2" ? "Selected" : "Select"}
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="edit-config" className="mt-6">
+          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-md">
+            <div className="flex items-center mb-6">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                <Edit className="h-5 w-5 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold">Edit Configuration</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="config-name" className="text-sm font-medium mb-1.5 block">
+                    Configuration Name
+                  </Label>
+                  <Input
+                    id="config-name"
+                    placeholder="Enter a name for this configuration"
+                    value={configName}
+                    onChange={(e) => setConfigName(e.target.value)}
+                    className="shadow-sm"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="grid-size" className="text-sm font-medium mb-1.5 block">
+                    Grid Size
+                  </Label>
+                  <Select value={gridSize} onValueChange={setGridSize}>
+                    <SelectTrigger id="grid-size" className="w-full border border-gray-300 shadow-sm">
+                      <SelectValue placeholder="Select grid size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3x3">3x3 (Minimal coverage)</SelectItem>
+                      <SelectItem value="5x5">5x5 (Small area)</SelectItem>
+                      <SelectItem value="7x7">7x7 (Medium area)</SelectItem>
+                      <SelectItem value="9x9">9x9 (Standard)</SelectItem>
+                      <SelectItem value="11x11">11x11 (Detailed)</SelectItem>
+                      <SelectItem value="13x13">13x13 (Maximum detail)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="grid-distance" className="text-sm font-medium mb-1.5 block">
+                    Distance Between Points
+                  </Label>
+                  <Select value={gridDistance} onValueChange={setGridDistance}>
+                    <SelectTrigger id="grid-distance" className="w-full border border-gray-300 shadow-sm">
+                      <SelectValue placeholder="Select distance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0.1">100 meters</SelectItem>
+                      <SelectItem value="0.25">250 meters</SelectItem>
+                      <SelectItem value="0.5">500 meters</SelectItem>
+                      <SelectItem value="1">1 km</SelectItem>
+                      <SelectItem value="2.5">2.5 km (Standard)</SelectItem>
+                      <SelectItem value="5">5 km</SelectItem>
+                      <SelectItem value="10">10 km</SelectItem>
+                      <SelectItem value="15">15 km</SelectItem>
+                      <SelectItem value="20">20 km</SelectItem>
+                      <SelectItem value="25">25 km</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium mb-1.5 block">Google Region</Label>
+                  <RadioGroup value={googleRegion} onValueChange={setGoogleRegion} className="flex space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="global" id="global-config" />
+                      <Label htmlFor="global-config">Global</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="local" id="local-config" />
+                      <Label htmlFor="local-config">Local</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="pt-4">
+                  <Label className="text-sm font-medium mb-1.5 block">Advanced Options</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="save-results" />
+                      <Label htmlFor="save-results" className="text-sm">
+                        Save results to history
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="auto-export" />
+                      <Label htmlFor="auto-export" className="text-sm">
+                        Auto-export results as CSV
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox id="competitor-analysis" />
+                      <Label htmlFor="competitor-analysis" className="text-sm">
+                        Include competitor analysis
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h4 className="font-medium mb-4 flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-blue-600" />
+                  Configuration Preview
+                </h4>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Grid Size:</span>
+                    <span className="text-sm font-medium">{gridSize}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Grid Points:</span>
+                    <span className="text-sm font-medium">
+                      {gridSize === "9x9"
+                        ? "81"
+                        : gridSize === "13x13"
+                          ? "169"
+                          : gridSize === "7x7"
+                            ? "49"
+                            : gridSize === "5x5"
+                              ? "25"
+                              : gridSize === "3x3"
+                                ? "9"
+                                : "121"}{" "}
+                      points
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Distance Between Points:</span>
+                    <span className="text-sm font-medium">{gridDistance} km</span>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Total Coverage Area:</span>
+                    <span className="text-sm font-medium">
+                      {(() => {
+                        const size = Number.parseInt(gridSize.split("x")[0])
+                        const distance = Number.parseFloat(gridDistance)
+                        const totalDistance = (size - 1) * distance
+                        // Format the distance appropriately
+                        return totalDistance < 1 
+                          ? `${(totalDistance * 1000).toFixed(0)}m × ${(totalDistance * 1000).toFixed(0)}m`
+                          : `${totalDistance.toFixed(1)}km × ${totalDistance.toFixed(1)}km`
+                      })()}
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Google Region:</span>
+                    <span className="text-sm font-medium capitalize">{googleRegion}</span>
+                  </div>
+
+                  <div className="pt-4">
+                    <div className="bg-blue-50 p-3 rounded-md text-sm border border-blue-100">
+                      <div className="flex items-start">
+                        <Info className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+                        <p className="text-gray-700">
+                          This configuration will create a {gridSize} grid with {gridDistance}km spacing between points,
+                          covering a total area of {(() => {
+                            const size = Number.parseInt(gridSize.split("x")[0])
+                            const distance = Number.parseFloat(gridDistance)
+                            const totalDistance = (size - 1) * distance
+                            return `${totalDistance} km × ${totalDistance} km`
+                          })()}.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6 space-x-3">
+              <Button variant="outline" className="border border-gray-300">
+                Cancel
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 border border-blue-700"
+                onClick={saveConfig}
+                disabled={!configName.trim()}
+              >
+                Save Configuration
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Help Dialog */}
+      <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>GeoGrid Help & Documentation</DialogTitle>
+            <DialogDescription>
+              Learn how to use the GeoGrid tool to analyze your local search rankings
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            <div>
+              <h3 className="text-lg font-medium text-blue-700 mb-2">What is GeoGrid?</h3>
+              <p className="text-gray-700 mb-2">
+                GeoGrid is a tool that helps you understand how your business ranks in Google Maps searches from
+                different locations around your business. It creates a grid of search points and checks your ranking at
+                each point.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-blue-700 mb-2">How to Use GeoGrid</h3>
+              <ol className="list-decimal pl-5 space-y-2 text-gray-700">
+                <li>Select your business using one of the available methods (Google search, Place ID, etc.)</li>
+                <li>Enter a search term that potential customers would use to find your business</li>
+                <li>Choose your grid settings (size and distance between points)</li>
+                <li>Click "Search" to run the GeoGrid analysis</li>
+                <li>View your results on the dashboard</li>
+              </ol>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-blue-700 mb-2">Understanding Your Results</h3>
+              <p className="text-gray-700 mb-2">
+                The GeoGrid results show how your business ranks for the selected search term at different locations.
+                The metrics include:
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-gray-700">
+                <li>
+                  <strong>AGR (Average Grid Ranking):</strong> Your average position across all grid points
+                </li>
+                <li>
+                  <strong>ATGR (Average Top Grid Ranking):</strong> Your average position for points where you rank in
+                  the top 20
+                </li>
+                <li>
+                  <strong>SoLV (Share of Local Visibility):</strong> Percentage of grid points where you rank in the top
+                  3
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-blue-700 mb-2">Business Selection Methods</h3>
+              <div className="space-y-3">
+                <div className="p-3 bg-blue-50 rounded-md">
+                  <h4 className="font-medium text-blue-800 mb-1">My Businesses</h4>
+                  <p className="text-sm text-gray-700">Select from your previously saved businesses in the database.</p>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-md">
+                  <h4 className="font-medium text-blue-800 mb-1">Google Search</h4>
+                  <p className="text-sm text-gray-700">
+                    Search for your business by name and location using Google Places API.
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-md">
+                  <h4 className="font-medium text-blue-800 mb-1">Place ID</h4>
+                  <p className="text-sm text-gray-700">
+                    Enter your Google Place ID directly. You can find this in your Google Business Profile or from a
+                    Google Maps URL.
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-md">
+                  <h4 className="font-medium text-blue-800 mb-1">Map URL</h4>
+                  <p className="text-sm text-gray-700">
+                    Paste a Google Maps URL of your business, and we'll extract the Place ID automatically.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-blue-700 mb-2">Need More Help?</h3>
+              <p className="text-gray-700">
+                For additional support, contact our team at{" "}
+                <a href="mailto:support@geogrid.com" className="text-blue-600 hover:underline">
+                  support@geogrid.com
+                </a>{" "}
+                or visit our{" "}
+                <a href="#" className="text-blue-600 hover:underline">
+                  knowledge base
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setShowHelpDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>GeoGrid Settings</DialogTitle>
+            <DialogDescription>Configure your GeoGrid preferences</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="api-key" className="text-sm font-medium mb-1.5 block">
+                Google Maps API Key
+              </Label>
+              <Input 
+                id="api-key" 
+                type="password" 
+                value={settings.apiKey}
+                onChange={(e) => setSettings({ ...settings, apiKey: e.target.value })}
+                className="shadow-sm" 
+                placeholder="Enter your Google Maps API key"
+              />
+              <p className="text-xs text-gray-500 mt-1">Using your own API key will increase your request limits</p>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">Default Grid Size</Label>
+              <Select 
+                value={settings.defaultGridSize}
+                onValueChange={(value) => setSettings({ ...settings, defaultGridSize: value })}
+              >
+                <SelectTrigger className="w-full border border-gray-300 shadow-sm">
+                  <SelectValue placeholder="Select grid size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5x5">5x5 (Small area)</SelectItem>
+                  <SelectItem value="7x7">7x7 (Medium area)</SelectItem>
+                  <SelectItem value="9x9">9x9 (Standard)</SelectItem>
+                  <SelectItem value="13x13">13x13 (Detailed)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium mb-1.5 block">Default Distance Between Points</Label>
+              <Select 
+                value={settings.defaultDistance}
+                onValueChange={(value) => setSettings({ ...settings, defaultDistance: value })}
+              >
+                <SelectTrigger className="w-full border border-gray-300 shadow-sm">
+                  <SelectValue placeholder="Select distance" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 km</SelectItem>
+                  <SelectItem value="2.5">2.5 km (Standard)</SelectItem>
+                  <SelectItem value="5">5 km</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium block">General Settings</Label>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="auto-save" 
+                  checked={settings.autoSave}
+                  onCheckedChange={(checked) => setSettings({ ...settings, autoSave: checked as boolean })}
+                />
+                <Label htmlFor="auto-save" className="text-sm">
+                  Automatically save search results
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="email-reports" 
+                  checked={settings.emailReports}
+                  onCheckedChange={(checked) => setSettings({ ...settings, emailReports: checked as boolean })}
+                />
+                <Label htmlFor="email-reports" className="text-sm">
+                  Email reports after each search
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="dark-mode" 
+                  checked={settings.darkMode}
+                  onCheckedChange={(checked) => setSettings({ ...settings, darkMode: checked as boolean })}
+                />
+                <Label htmlFor="dark-mode" className="text-sm">
+                  Dark mode
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSettingsDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveSettings}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+// Make sure to export the component as default as well
+export default NewGeoGridSearch
+
+

@@ -1,0 +1,698 @@
+@font-face {
+  font-family: 'LocalViking';
+  src: url('https://localviking.com/packs/images/5b67d635abb53cc261c5.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'LocalVikingAlt';
+  src: url('https://localviking.com/packs/images/09b2f37e93bedfaa2976.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 50% 98%;
+    --foreground: 210 50% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 50% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 50% 10%;
+
+    --primary: 210 100% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 180 50% 40%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 25% 96%;
+    --muted-foreground: 210 40% 40%;
+
+    --accent: 180 50% 96%;
+    --accent-foreground: 180 50% 40%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 20% 92%;
+    --input: 210 20% 92%;
+    --ring: 210 100% 40%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar variables */
+    --sidebar-background: 210 50% 98%;
+    --sidebar-foreground: 210 50% 25%;
+    --sidebar-primary: 210 100% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 50% 95%;
+    --sidebar-accent-foreground: 210 50% 25%;
+    --sidebar-border: 210 30% 90%;
+    --sidebar-ring: 210 100% 40%;
+
+    /* Chart colors */
+    --chart-1: 210 100% 40%;
+    --chart-2: 180 50% 40%;
+    --chart-3: 330 80% 45%;
+    --chart-4: 25 95% 55%;
+    --chart-5: 45 90% 45%;
+    --chart-6: 155 70% 40%;
+
+    /* Custom colors */
+    --teal: 180 50% 40%;
+    --teal-light: 180 50% 95%;
+    --blue: 210 100% 40%;
+    --blue-light: 210 100% 95%;
+    --purple: 270 70% 45%;
+    --purple-light: 270 70% 95%;
+    --amber: 35 90% 50%;
+    --amber-light: 35 90% 95%;
+
+    /* Gradient colors */
+    --gradient-start: 210 100% 40%;
+    --gradient-end: 180 50% 40%;
+  }
+
+  .dark {
+    --background: 210 50% 10%;
+    --foreground: 210 20% 98%;
+
+    --card: 210 50% 15%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 210 50% 15%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 210 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 180 70% 40%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 40% 20%;
+    --muted-foreground: 210 20% 70%;
+
+    --accent: 210 40% 20%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 210 40% 20%;
+    --input: 210 40% 20%;
+    --ring: 210 100% 50%;
+
+    /* Sidebar variables */
+    --sidebar-background: 210 50% 15%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 210 100% 50%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 210 40% 20%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 210 40% 20%;
+    --sidebar-ring: 210 100% 50%;
+
+    /* Gradient colors */
+    --gradient-start: 210 100% 50%;
+    --gradient-end: 180 70% 40%;
+  }
+
+  html {
+    font-family: 'LocalVikingAlt', system-ui, sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'LocalViking', system-ui, sans-serif;
+  }
+  
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom animation delays */
+.animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+.animation-delay-500 {
+  animation-delay: 500ms;
+}
+
+.animation-delay-700 {
+  animation-delay: 700ms;
+}
+
+/* Custom animations */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out forwards;
+}
+
+/* Map marker styles */
+.map-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  color: white;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.map-marker:hover {
+  transform: scale(1.2);
+  z-index: 10;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.map-marker::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.map-marker-excellent {
+  background-color: #10b981;
+  width: 28px;
+  height: 28px;
+}
+
+.map-marker-good {
+  background-color: #22c55e;
+  width: 24px;
+  height: 24px;
+}
+
+.map-marker-average {
+  background-color: #f59e0b;
+  width: 20px;
+  height: 20px;
+}
+
+.map-marker-poor {
+  background-color: #f97316;
+  width: 18px;
+  height: 18px;
+}
+
+.map-marker-bad {
+  background-color: #ef4444;
+  width: 16px;
+  height: 16px;
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.dark .glass {
+  background: rgba(17, 25, 40, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.125);
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600;
+}
+
+.dark .gradient-text {
+  @apply from-blue-400 to-purple-400;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Gradient borders */
+.gradient-border {
+  position: relative;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0.5rem;
+  padding: 2px;
+  background: linear-gradient(to right, hsl(var(--gradient-start)), hsl(var(--gradient-end)));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Tooltip styles */
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem;
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* LocalViking grid marker styles */
+.lv-grid-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #4285F4;
+  color: white;
+  font-family: 'LocalVikingAlt', sans-serif;
+  font-weight: bold;
+  font-size: 12px;
+  border: 1.5px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+}
+
+.lv-grid-marker:hover {
+  transform: scale(1.2);
+  z-index: 5;
+}
+
+.lv-grid-marker-excellent {
+  background-color: #4CAF50;
+  width: 28px;
+  height: 28px;
+  font-size: 13px;
+  z-index: 5;
+}
+
+.lv-grid-marker-good {
+  background-color: #8BC34A;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  z-index: 4;
+}
+
+.lv-grid-marker-average {
+  background-color: #FFC107;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  z-index: 3;
+}
+
+.lv-grid-marker-below-average {
+  background-color: #FF9800;
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+  z-index: 2;
+}
+
+.lv-grid-marker-poor {
+  background-color: #F44336;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  z-index: 1;
+}
+
+/* LocalViking InfoWindow Styles */
+.lv-info-window {
+  font-family: 'LocalVikingAlt', sans-serif;
+  padding: 12px;
+  max-width: 320px;
+}
+
+.lv-info-window h3 {
+  font-weight: bold;
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.lv-info-window p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #555;
+}
+
+.lv-info-window button {
+  background-color: #4285F4;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  font-family: 'LocalVikingAlt', sans-serif;
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.lv-info-window button:hover {
+  background-color: #3367D6;
+}
+
+.lv-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.lv-results-table th {
+  text-align: left;
+  padding: 6px;
+  background-color: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 12px;
+}
+
+.lv-results-table td {
+  padding: 6px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+
+.lv-loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #4285F4;
+  border-radius: 50%;
+  margin: 10px auto;
+  animation: lv-spin 1s linear infinite;
+}
+
+@keyframes lv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* LocalViking specific components */
+.lv-button {
+  @apply rounded-full bg-primary text-white px-4 py-2 font-medium transition-all;
+  box-shadow: 0 2px 5px rgba(0, 99, 220, 0.15);
+}
+
+.lv-button:hover {
+  @apply bg-primary/90;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 99, 220, 0.2);
+}
+
+.lv-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 99, 220, 0.1);
+}
+
+.lv-button-secondary {
+  @apply rounded-full bg-secondary text-white px-4 py-2 font-medium transition-all;
+  box-shadow: 0 2px 5px rgba(0, 156, 161, 0.15);
+}
+
+.lv-button-secondary:hover {
+  @apply bg-secondary/90;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 156, 161, 0.2);
+}
+
+.lv-button-ghost {
+  @apply rounded-full bg-transparent text-primary border border-primary/30 px-4 py-2 font-medium transition-all;
+}
+
+.lv-button-ghost:hover {
+  @apply bg-primary/5 border-primary/50;
+  transform: translateY(-1px);
+}
+
+.lv-card {
+  @apply bg-white rounded-xl border-0 shadow-sm transition-all;
+  box-shadow: 0 4px 12px rgba(0, 99, 220, 0.05);
+}
+
+.lv-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 99, 220, 0.08);
+}
+
+.lv-gradient-header {
+  @apply bg-gradient-to-r from-primary to-secondary text-white rounded-t-xl p-5;
+}
+
+.lv-tab {
+  @apply rounded-full px-4 py-2 text-sm font-medium transition-all;
+}
+
+.lv-tab[data-state="active"] {
+  @apply bg-primary text-white;
+  box-shadow: 0 2px 5px rgba(0, 99, 220, 0.15);
+}
+
+.lv-tab-list {
+  @apply bg-blue-50 p-1 rounded-full flex space-x-1;
+}
+
+.lv-stat-card {
+  @apply p-4 rounded-xl bg-blue-50 border border-blue-100 transition-all;
+}
+
+.lv-stat-card:hover {
+  @apply bg-blue-100/70;
+  transform: translateY(-2px);
+}
+
+.lv-progress-bar {
+  @apply h-2 bg-slate-200 rounded-full overflow-hidden;
+}
+
+.lv-progress-bar-fill {
+  @apply h-full rounded-full transition-all duration-500 ease-out;
+}
+
+.lv-badge {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.lv-badge-primary {
+  @apply bg-primary/10 text-primary;
+}
+
+.lv-badge-secondary {
+  @apply bg-secondary/10 text-secondary;
+}
+
+.lv-badge-success {
+  @apply bg-emerald-100 text-emerald-800;
+}
+
+.lv-badge-warning {
+  @apply bg-amber-100 text-amber-800;
+}
+
+.lv-badge-danger {
+  @apply bg-red-100 text-red-800;
+}
+
+/* Custom table styling */
+.lv-table {
+  @apply w-full border-collapse;
+}
+
+.lv-table th {
+  @apply bg-blue-50 text-blue-900 font-medium p-3 border-b border-blue-100 text-left;
+}
+
+.lv-table td {
+  @apply p-3 border-b border-slate-100;
+}
+
+.lv-table tr:hover td {
+  @apply bg-blue-50/50;
+}
+
+/* Custom form elements */
+.lv-input {
+  @apply border border-slate-200 rounded-lg p-2 w-full shadow-sm;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.lv-input:focus {
+  @apply border-primary outline-none;
+  box-shadow: 0 0 0 2px rgba(0, 99, 220, 0.1);
+}
+
+.lv-select {
+  @apply border border-slate-200 rounded-lg p-2 pr-8 w-full shadow-sm appearance-none bg-white;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1em;
+}
+
+.lv-select:focus {
+  @apply border-primary outline-none;
+  box-shadow: 0 0 0 2px rgba(0, 99, 220, 0.1);
+}
+
+/* Enhanced animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(0, 99, 220, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 16px 4px rgba(0, 99, 220, 0.2);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.4s ease-out forwards;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
