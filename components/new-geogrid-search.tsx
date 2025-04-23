@@ -2897,40 +2897,7 @@ export function NewGeoGridSearch() {
 
   return (
     <div className="container mx-auto py-20 px-4">
-      <div className="flex justify-end mb-6 mt-4">
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="flex gap-2 p-0 shadow-md">
-            <TabsTrigger
-              value="new-geogrid"
-              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
-              title="New GeoGrid"
-            >
-              <Plus className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger
-              value="history"
-              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
-              title="History"
-            >
-              <Clock className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger
-              value="config-geogrids"
-              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
-              title="Config's GeoGrids"
-            >
-              <Settings className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger
-              value="edit-config"
-              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
-              title="Edit Config"
-            >
-              <Edit className="h-5 w-5" />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      {/* Removing the tabs list as requested */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsContent value="new-geogrid" className="mt-6">
           {isSearching ? (
