@@ -7,6 +7,7 @@ import { ArrowLeft, Repeat, Download, Share2, Trash2, Users } from "lucide-react
 import { loadGoogleMaps } from "@/lib/google-maps-loader"
 import { deleteGridResult, getCompetitors, type GridResult } from "@/lib/geogrid-service"
 import { useRouter } from "next/navigation"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface GridResultType {
   id: string;
@@ -60,6 +61,7 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
   const [mapError, setMapError] = useState<string | null>(null)
   const [competitors, setCompetitors] = useState<Competitor[]>([])
   const [isDeleting, setIsDeleting] = useState(false)
+  const [competitorsModalOpen, setCompetitorsModalOpen] = useState(false)
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const placesServiceRef = useRef<any>(null)
@@ -80,8 +82,8 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
 
   // Initialize map
   useEffect(() => {
-    // Don't try to initialize if the component isn't fully mounted
-    if (!mapRef.current || !isOpen) return;
+    // Don't try to initialize if the component isn't fully mounted or if not in browser environment
+    if (!mapRef.current || !isOpen || typeof window === 'undefined') return;
 
     let isMounted = true;
     let timeoutId: NodeJS.Timeout;
@@ -102,7 +104,7 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
           await loadGoogleMaps();
           
           // Safety check after async operation
-          if (!isMounted) {
+          if (!isMounted || !mapRef.current) {
             console.log("Component unmounted during API load");
             return;
           }
@@ -145,71 +147,121 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
           fullscreenControl: true,
           styles: [
             {
-              featureType: "water",
               elementType: "geometry",
-              stylers: [{ color: "#e9e9e9" }, { lightness: 17 }],
+              stylers: [{ color: "#ebe3cd" }]
             },
             {
-              featureType: "landscape",
-              elementType: "geometry",
-              stylers: [{ color: "#f5f5f5" }, { lightness: 20 }],
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#523735" }]
             },
             {
-              featureType: "road.highway",
-              elementType: "geometry.fill",
-              stylers: [{ color: "#ffffff" }, { lightness: 17 }],
+              elementType: "labels.text.stroke",
+              stylers: [{ color: "#f5f1e6" }]
             },
             {
-              featureType: "road.highway",
+              featureType: "administrative",
               elementType: "geometry.stroke",
-              stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }],
+              stylers: [{ color: "#c9b2a6" }]
             },
             {
-              featureType: "road.arterial",
-              elementType: "geometry",
-              stylers: [{ color: "#ffffff" }, { lightness: 18 }],
+              featureType: "administrative.land_parcel",
+              elementType: "geometry.stroke",
+              stylers: [{ color: "#dcd2be" }]
             },
             {
-              featureType: "road.local",
+              featureType: "administrative.land_parcel",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#ae9e90" }]
+            },
+            {
+              featureType: "landscape.natural",
               elementType: "geometry",
-              stylers: [{ color: "#ffffff" }, { lightness: 16 }],
+              stylers: [{ color: "#dfd2ae" }]
             },
             {
               featureType: "poi",
               elementType: "geometry",
-              stylers: [{ color: "#f5f5f5" }, { lightness: 21 }],
+              stylers: [{ color: "#dfd2ae" }]
+            },
+            {
+              featureType: "poi",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#93817c" }]
             },
             {
               featureType: "poi.park",
-              elementType: "geometry",
-              stylers: [{ color: "#dedede" }, { lightness: 21 }],
-            },
-            {
-              elementType: "labels.text.stroke",
-              stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }],
-            },
-            {
-              elementType: "labels.text.fill",
-              stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }],
-            },
-            {
-              elementType: "labels.icon",
-              stylers: [{ visibility: "off" }],
-            },
-            {
-              featureType: "transit",
-              elementType: "geometry",
-              stylers: [{ color: "#f2f2f2" }, { lightness: 19 }],
-            },
-            {
-              featureType: "administrative",
               elementType: "geometry.fill",
-              stylers: [{ color: "#fefefe" }, { lightness: 20 }],
+              stylers: [{ color: "#a5b076" }]
             },
             {
-              featureType: "administrative",
+              featureType: "poi.park",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#447530" }]
+            },
+            {
+              featureType: "road",
+              elementType: "geometry",
+              stylers: [{ color: "#f5f1e6" }]
+            },
+            {
+              featureType: "road.arterial",
+              elementType: "geometry",
+              stylers: [{ color: "#fdfcf8" }]
+            },
+            {
+              featureType: "road.highway",
+              elementType: "geometry",
+              stylers: [{ color: "#f8c967" }]
+            },
+            {
+              featureType: "road.highway",
               elementType: "geometry.stroke",
-              stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }],
+              stylers: [{ color: "#e9bc62" }]
+            },
+            {
+              featureType: "road.highway.controlled_access",
+              elementType: "geometry",
+              stylers: [{ color: "#e98d58" }]
+            },
+            {
+              featureType: "road.highway.controlled_access",
+              elementType: "geometry.stroke",
+              stylers: [{ color: "#db8555" }]
+            },
+            {
+              featureType: "road.local",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#806b63" }]
+            },
+            {
+              featureType: "transit.line",
+              elementType: "geometry",
+              stylers: [{ color: "#dfd2ae" }]
+            },
+            {
+              featureType: "transit.line",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#8f7d77" }]
+            },
+            {
+              featureType: "transit.line",
+              elementType: "labels.text.stroke",
+              stylers: [{ color: "#ebe3cd" }]
+            },
+            {
+              featureType: "transit.station",
+              elementType: "geometry",
+              stylers: [{ color: "#dfd2ae" }]
+            },
+            {
+              featureType: "water",
+              elementType: "geometry.fill",
+              stylers: [{ color: "#b9d3c2" }]
+            },
+            {
+              featureType: "water",
+              elementType: "labels.text.fill",
+              stylers: [{ color: "#92998d" }]
             },
           ],
         });
@@ -285,131 +337,159 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
 
   // Handle repeat search
   const handleRepeatSearch = () => {
-    window.location.href = `/new-search?business=${encodeURIComponent(gridResult.businessInfo.name)}&searchTerm=${encodeURIComponent(
+    router.push(`/new-search?business=${encodeURIComponent(gridResult.businessInfo.name)}&searchTerm=${encodeURIComponent(
       gridResult.searchTerm,
-    )}`
+    )}`)
   }
 
-  // Handle open PNG
+  // Handle PNG download
   const handleOpenPNG = () => {
-    // Create a canvas element to draw the grid
-    const canvas = document.createElement("canvas")
-    const ctx = canvas.getContext("2d")
-    const gridSize = gridResult.gridSize || 13
-    const cellSize = 40
-    const padding = 20
+    try {
+      // Create a canvas element to draw the grid
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
+      const gridSize = gridResult.gridSize || 13
+      const cellSize = 40
+      const padding = 20
 
-    // Set canvas dimensions
-    canvas.width = gridSize * cellSize + padding * 2
-    canvas.height = gridSize * cellSize + padding * 2 + 60 // Extra space for title
+      // Set canvas dimensions
+      canvas.width = gridSize * cellSize + padding * 2
+      canvas.height = gridSize * cellSize + padding * 2 + 60 // Extra space for title
 
-    if (!ctx) return
+      if (!ctx) {
+        console.error("Failed to get canvas context");
+        return;
+      }
 
-    // Fill background
-    ctx.fillStyle = "#FFFFFF"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+      // Fill background
+      ctx.fillStyle = "#FFFFFF"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Draw title
-    ctx.fillStyle = "#000000"
-    ctx.font = "bold 16px Arial"
-    ctx.textAlign = "center"
-    ctx.fillText(`${gridResult.businessInfo.name} - "${gridResult.searchTerm}"`, canvas.width / 2, 30)
+      // Draw title
+      ctx.fillStyle = "#000000"
+      ctx.font = "bold 16px Arial"
+      ctx.textAlign = "center"
+      ctx.fillText(`${gridResult.businessInfo.name} - "${gridResult.searchTerm}"`, canvas.width / 2, 30)
 
-    // Draw grid
-    for (let i = 0; i < gridSize; i++) {
-      for (let j = 0; j < gridSize; j++) {
-        const x = j * cellSize + padding
-        const y = i * cellSize + padding + 60
-        const ranking = gridData[i][j]
+      // Draw grid
+      for (let i = 0; i < gridSize; i++) {
+        for (let j = 0; j < gridSize; j++) {
+          const x = j * cellSize + padding
+          const y = i * cellSize + padding + 60
+          const ranking = gridData[i][j]
 
-        // Draw cell background
-        ctx.fillStyle = ranking === 0 ? "#F3F4F6" : getRankingColor(ranking)
-        ctx.fillRect(x, y, cellSize, cellSize)
+          // Draw cell background
+          ctx.fillStyle = ranking === 0 ? "#F3F4F6" : getRankingColor(ranking)
+          ctx.fillRect(x, y, cellSize, cellSize)
 
-        // Draw cell border
-        ctx.strokeStyle = "#FFFFFF"
-        ctx.lineWidth = 1
-        ctx.strokeRect(x, y, cellSize, cellSize)
+          // Draw cell border
+          ctx.strokeStyle = "#FFFFFF"
+          ctx.lineWidth = 1
+          ctx.strokeRect(x, y, cellSize, cellSize)
 
-        // Draw ranking text
-        if (ranking > 0) {
-          ctx.fillStyle = "#FFFFFF"
-          ctx.font = "bold 14px Arial"
-          ctx.textAlign = "center"
-          ctx.textBaseline = "middle"
-          ctx.fillText(formatRankingLabel(ranking), x + cellSize / 2, y + cellSize / 2)
+          // Draw ranking text
+          if (ranking > 0) {
+            ctx.fillStyle = "#FFFFFF"
+            ctx.font = "bold 14px Arial"
+            ctx.textAlign = "center"
+            ctx.textBaseline = "middle"
+            ctx.fillText(formatRankingLabel(ranking), x + cellSize / 2, y + cellSize / 2)
+          }
         }
       }
-    }
 
-    // Draw business location marker
-    const centerX = Math.floor(gridSize / 2)
-    const centerY = Math.floor(gridSize / 2)
-    const markerX = centerX * cellSize + padding + cellSize / 2
-    const markerY = centerY * cellSize + padding + 60 + cellSize / 2
+      // Draw business location marker
+      const centerX = Math.floor(gridSize / 2)
+      const centerY = Math.floor(gridSize / 2)
+      const markerX = centerX * cellSize + padding + cellSize / 2
+      const markerY = centerY * cellSize + padding + 60 + cellSize / 2
 
-    ctx.beginPath()
-    ctx.arc(markerX, markerY, 8, 0, 2 * Math.PI)
-    ctx.fillStyle = "#3B82F6"
-    ctx.fill()
-    ctx.strokeStyle = "#FFFFFF"
-    ctx.lineWidth = 2
-    ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(markerX, markerY, 8, 0, 2 * Math.PI)
+      ctx.fillStyle = "#3B82F6"
+      ctx.fill()
+      ctx.strokeStyle = "#FFFFFF"
+      ctx.lineWidth = 2
+      ctx.stroke()
 
-    // Convert canvas to PNG and open in new tab
-    const dataUrl = canvas.toDataURL("image/png")
-    const newTab = window.open()
-    if (newTab) {
-      newTab.document.write(`<img src="${dataUrl}" alt="GeoGrid Result" style="max-width: 100%;">`)
-      newTab.document.title = `GeoGrid - ${gridResult.businessInfo.name}`
+      // Convert canvas to PNG and download
+      const dataUrl = canvas.toDataURL("image/png")
+      
+      // Create download link
+      const link = document.createElement("a")
+      link.href = dataUrl
+      link.download = `geogrid-${gridResult.businessInfo.name.replace(/\s+/g, "-")}-${Date.now()}.png`
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error("Error generating PNG:", error);
+      alert("Failed to generate PNG. Please try again.");
     }
   }
 
   // Handle CSV download
   const handleCSVDownload = () => {
-    // Generate CSV content
-    let csvContent = "data:text/csv;charset=utf-8,"
+    try {
+      // Generate CSV content
+      let csvContent = ""
 
-    // Add header row with business info
-    csvContent += `"GeoGrid Results for ${gridResult.businessInfo.name}"\n`
-    csvContent += `"Search Term: ${gridResult.searchTerm}"\n`
-    csvContent += `"Date: ${new Date(gridResult.createdAt).toLocaleString()}"\n\n`
+      // Add header row with business info
+      csvContent += `"GeoGrid Results for ${gridResult.businessInfo.name}"\n`
+      csvContent += `"Search Term: ${gridResult.searchTerm}"\n`
+      csvContent += `"Date: ${new Date(gridResult.createdAt).toLocaleString()}"\n\n`
 
-    // Add grid data header
-    csvContent += "Row,Column,Latitude,Longitude,Ranking\n"
+      // Add grid data header
+      csvContent += "Row,Column,Latitude,Longitude,Ranking\n"
 
-    // Calculate grid coordinates
-    const gridSize = gridResult.gridSize || 13
-    const distance = gridResult.distanceKm || 2.5 // km
-    const latKmRatio = 1 / 110.574 // approx km per degree of latitude
-    const lngKmRatio = 1 / (111.32 * Math.cos((location.lat * Math.PI) / 180)) // approx km per degree of longitude
+      // Calculate grid coordinates
+      const gridSize = gridResult.gridSize || 13
+      const distance = gridResult.distanceKm || 2.5 // km
+      const latKmRatio = 1 / 110.574 // approx km per degree of latitude
+      const lngKmRatio = 1 / (111.32 * Math.cos((location.lat * Math.PI) / 180)) // approx km per degree of longitude
 
-    const startLat = location.lat - (distance * latKmRatio * (gridSize - 1)) / 2
-    const startLng = location.lng - (distance * lngKmRatio * (gridSize - 1)) / 2
+      const startLat = location.lat - (distance * latKmRatio * (gridSize - 1)) / 2
+      const startLng = location.lng - (distance * lngKmRatio * (gridSize - 1)) / 2
 
-    // Add grid data rows
-    gridData.forEach((row: number[], rowIndex: number) => {
-      row.forEach((ranking: number, colIndex: number) => {
-        const lat = startLat + rowIndex * distance * latKmRatio
-        const lng = startLng + colIndex * distance * lngKmRatio
-        csvContent += `${rowIndex + 1},${colIndex + 1},${lat.toFixed(6)},${lng.toFixed(6)},${ranking}\n`
+      // Add grid data rows
+      gridData.forEach((row: number[], rowIndex: number) => {
+        row.forEach((ranking: number, colIndex: number) => {
+          const lat = startLat + rowIndex * distance * latKmRatio
+          const lng = startLng + colIndex * distance * lngKmRatio
+          csvContent += `${rowIndex + 1},${colIndex + 1},${lat.toFixed(6)},${lng.toFixed(6)},${ranking}\n`
+        })
       })
-    })
 
-    // Add metrics
-    csvContent += `\n"Metrics:"\n`
-    csvContent += `"AGR (Average Grid Ranking)",${gridResult.metrics.agr.toFixed(1)}\n`
-    csvContent += `"ATGR (Average Top Grid Ranking)",${gridResult.metrics.atgr.toFixed(2)}\n`
-    csvContent += `"SoLV (Share of Local Voice)",${gridResult.metrics.solv}\n`
+      // Add metrics
+      csvContent += `\n"Metrics:"\n`
+      csvContent += `"AGR (Average Grid Ranking)",${gridResult.metrics.agr.toFixed(1)}\n`
+      csvContent += `"ATGR (Average Top Grid Ranking)",${gridResult.metrics.atgr.toFixed(2)}\n`
+      csvContent += `"SoLV (Share of Local Voice)",${gridResult.metrics.solv}\n`
 
-    // Create download link
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement("a")
-    link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `geogrid-${gridResult.businessInfo.name.replace(/\s+/g, "-")}-${Date.now()}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+      // Create a Blob object containing the CSV data
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      
+      // Create a download link
+      const link = document.createElement("a")
+      
+      // Create the download URL from the blob
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url)
+      link.setAttribute("download", `geogrid-${gridResult.businessInfo.name.replace(/\s+/g, "-")}-${Date.now()}.csv`)
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link)
+      
+      // Trigger download
+      link.click()
+      
+      // Clean up
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error generating CSV:", error);
+      alert("Failed to generate CSV file. Please try again.");
+    }
   }
 
   // Handle share
@@ -472,143 +552,7 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
 
   // Handle competitors view
   const handleCompetitorsView = () => {
-    // Create modal container
-    const modal = document.createElement("div")
-    modal.style.position = "fixed"
-    modal.style.top = "0"
-    modal.style.left = "0"
-    modal.style.width = "100%"
-    modal.style.height = "100%"
-    modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)"
-    modal.style.display = "flex"
-    modal.style.alignItems = "center"
-    modal.style.justifyContent = "center"
-    modal.style.zIndex = "9999"
-
-    // Create modal content
-    const content = document.createElement("div")
-    content.style.backgroundColor = "white"
-    content.style.padding = "24px"
-    content.style.borderRadius = "8px"
-    content.style.maxWidth = "600px"
-    content.style.width = "90%"
-    content.style.maxHeight = "80vh"
-    content.style.overflowY = "auto"
-
-    // Add title
-    const title = document.createElement("h2")
-    title.textContent = "Competitors"
-    title.style.marginBottom = "16px"
-    title.style.fontSize = "1.5rem"
-    title.style.fontWeight = "bold"
-
-    // Add close button
-    const closeButton = document.createElement("button")
-    closeButton.textContent = "Close"
-    closeButton.style.padding = "8px 16px"
-    closeButton.style.backgroundColor = "#f3f4f6"
-    closeButton.style.border = "none"
-    closeButton.style.borderRadius = "4px"
-    closeButton.style.cursor = "pointer"
-    closeButton.style.marginTop = "16px"
-    closeButton.onclick = () => document.body.removeChild(modal)
-
-    // Add competitors list
-    const list = document.createElement("div")
-
-    const competitorsToShow = competitors.map(comp => ({
-      ...comp,
-      distance: comp.distance || 0,
-      ranking: comp.ranking || 0
-    }))
-
-    competitorsToShow.forEach((comp: CompetitorDisplay) => {
-      const item = document.createElement("div")
-      item.style.padding = "12px"
-      item.style.borderBottom = "1px solid #e5e7eb"
-      item.style.display = "flex"
-      item.style.justifyContent = "space-between"
-      item.style.alignItems = "center"
-
-      const nameEl = document.createElement("div")
-      nameEl.textContent = comp.name
-      nameEl.style.fontWeight = "bold"
-
-      const infoEl = document.createElement("div")
-      infoEl.style.display = "flex"
-      infoEl.style.gap = "12px"
-
-      // If we have rating from the database
-      if (comp.rating) {
-        const ratingEl = document.createElement("div")
-        ratingEl.textContent = `Rating: ${comp.rating}`
-        ratingEl.style.backgroundColor = "#10b981"
-        ratingEl.style.color = "white"
-        ratingEl.style.padding = "4px 8px"
-        ratingEl.style.borderRadius = "4px"
-        infoEl.appendChild(ratingEl)
-      } else if (comp.ranking) {
-        // For simulated data
-        const rankEl = document.createElement("div")
-        rankEl.textContent = `Rank: ${comp.ranking}`
-        rankEl.style.backgroundColor = getRankingColor(comp.ranking)
-        rankEl.style.color = "white"
-        rankEl.style.padding = "4px 8px"
-        rankEl.style.borderRadius = "4px"
-        infoEl.appendChild(rankEl)
-      }
-
-      // Distance calculation
-      let distance = comp.distance
-      if (!distance && comp.location) {
-        // Calculate distance if we have location data
-        const businessLat = location.lat
-        const businessLng = location.lng
-        const compLat = comp.location.lat
-        const compLng = comp.location.lng
-
-        // Simple distance calculation (Haversine formula would be more accurate)
-        const R = 6371 // Radius of the earth in km
-        const dLat = ((compLat - businessLat) * Math.PI) / 180
-        const dLon = ((compLng - businessLng) * Math.PI) / 180
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos((businessLat * Math.PI) / 180) *
-            Math.cos((compLat * Math.PI) / 180) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2)
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        distance = R * c // Distance in km
-      }
-
-      if (distance) {
-        const distEl = document.createElement("div")
-        distEl.textContent = `${distance.toFixed(1)} km`
-        distEl.style.color = "#6b7280"
-        infoEl.appendChild(distEl)
-      }
-
-      item.appendChild(nameEl)
-      item.appendChild(infoEl)
-
-      list.appendChild(item)
-    })
-
-    // Assemble modal
-    content.appendChild(title)
-    content.appendChild(list)
-    content.appendChild(closeButton)
-    modal.appendChild(content)
-
-    // Add to document
-    document.body.appendChild(modal)
-
-    // Add event listener to close on background click
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        document.body.removeChild(modal)
-      }
-    })
+    setCompetitorsModalOpen(true);
   }
 
   // Add grid markers
@@ -654,58 +598,15 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
             
             // Check for ranking to determine fill color
             const ranking = gridData && gridData[i] && gridData[i][j] ? gridData[i][j] : 0;
+
             
-            // Create rectangle with very light fill
-            const rectangle = new window.google.maps.Rectangle({
-              bounds: cellBounds,
-              strokeWeight: 0,
-              fillColor: ranking > 0 ? getRankingColor(ranking) : '#FFFFFF',
-              fillOpacity: ranking > 0 ? 0.08 : 0,
-              map: mapInstance,
-              zIndex: 1 // Below markers
-            });
-            
-            gridCells.push(rectangle);
             bounds.extend({lat: cellNorthLat, lng: cellWestLng});
             bounds.extend({lat: cellSouthLat, lng: cellEastLng});
           }
         }
         
-        // Draw horizontal grid lines
-        for (let i = 0; i <= gridSize; i++) {
-          const rowLat = startLat + i * distance * latKmRatio;
-          const startPoint = { lat: rowLat, lng: startLng };
-          const endPoint = { lat: rowLat, lng: startLng + distance * lngKmRatio * (gridSize - 1) };
-          
-          const gridLine = new window.google.maps.Polyline({
-            path: [startPoint, endPoint],
-            geodesic: true,
-            strokeColor: '#AAAAAA',
-            strokeOpacity: 0.6,
-            strokeWeight: 1,
-            map: mapInstance
-          });
-          
-          gridLines.push(gridLine);
-        }
-        
-        // Draw vertical grid lines
-        for (let j = 0; j <= gridSize; j++) {
-          const colLng = startLng + j * distance * lngKmRatio;
-          const startPoint = { lat: startLat, lng: colLng };
-          const endPoint = { lat: startLat + distance * latKmRatio * (gridSize - 1), lng: colLng };
-          
-          const gridLine = new window.google.maps.Polyline({
-            path: [startPoint, endPoint],
-            geodesic: true,
-            strokeColor: '#AAAAAA',
-            strokeOpacity: 0.6,
-            strokeWeight: 1,
-            map: mapInstance
-          });
-          
-          gridLines.push(gridLine);
-        }
+
+
         
         // Add ranking markers
         for (let i = 0; i < gridSize; i++) {
@@ -720,26 +621,33 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
             // Skip if ranking is 0 (no data)
             if (ranking === 0) continue;
 
-            // Create marker with color based on ranking
-            new window.google.maps.Marker({
+            // Create marker with rank icon image
+            const marker = new window.google.maps.Marker({
               position: { lat, lng },
               map: mapInstance,
-              label: {
-                text: formatRankingLabel(ranking),
-                color: "#FFFFFF",
-                fontWeight: "bold",
-                fontSize: "12px",
-              },
               icon: {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                fillColor: getRankingColor(ranking),
-                fillOpacity: 1,
-                strokeWeight: 1,
-                strokeColor: "#FFFFFF",
-                scale: 15,
+                url: ranking <= 20 
+                  ? `/images/rank-icons/${ranking}.png` 
+                  : `/images/rank-icons/X.png`,
+                scaledSize: new window.google.maps.Size(32, 32),
+                anchor: new window.google.maps.Point(16, 16)
               },
-              zIndex: 100 - ranking, // Higher rankings appear above lower ones
+              zIndex: ranking <= 20 ? (21 - ranking) : 0, // Higher rankings appear above lower ones
               optimized: true,
+            });
+            
+            // Add click listener to show nearby competitors
+            marker.addListener('click', () => {
+              // Build temporary data for this grid point
+              const gridPointData = {
+                lat: lat,
+                lng: lng,
+                ranking: ranking,
+                pointIndex: i * gridSize + j
+              };
+              
+              // Show the competitors view for this point
+              showCompetitorsForGridPoint(gridPointData);
             });
           }
         }
@@ -759,6 +667,416 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
       console.error("Error drawing grid:", error);
     }
   }, [mapLoaded, mapError, gridSize, distance, location, gridData, gridResult.businessInfo.name]);
+
+  // Function to show competitors for a specific grid point
+  const showCompetitorsForGridPoint = async (gridPoint: { lat: number; lng: number; ranking: number; pointIndex: number }) => {
+    try {
+      // Show a loading indicator
+      const loadingModal = document.createElement("div");
+      loadingModal.style.position = "fixed";
+      loadingModal.style.top = "0";
+      loadingModal.style.left = "0";
+      loadingModal.style.width = "100%";
+      loadingModal.style.height = "100%";
+      loadingModal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+      loadingModal.style.display = "flex";
+      loadingModal.style.alignItems = "center";
+      loadingModal.style.justifyContent = "center";
+      loadingModal.style.zIndex = "9999";
+      
+      const loadingContent = document.createElement("div");
+      loadingContent.innerHTML = `
+        <div style="background-color: white; padding: 24px; border-radius: 8px; text-align: center;">
+          <div style="margin-bottom: 16px;">Loading competitors at this location...</div>
+          <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+          <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}</style>
+        </div>
+      `;
+      loadingModal.appendChild(loadingContent);
+      document.body.appendChild(loadingModal);
+      
+      // Fetch competitors using the places-search API
+      let results = [];
+      try {
+        // Call the places-search API directly
+        const response = await fetch('/api/places-search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: gridResult.searchTerm,
+            location: { lat: gridPoint.lat, lng: gridPoint.lng },
+            radius: 1500,  // 1.5km radius
+            rankBy: 'prominence',
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const competitorResults = data.results || [];
+
+        // Process the results
+        results = competitorResults.map((place: any, index: number) => {
+          // Calculate distance
+          const R = 6371; // Radius of the earth in km
+          const compLat = place.geometry?.location?.lat || 0;
+          const compLng = place.geometry?.location?.lng || 0;
+          
+          const dLat = ((compLat - gridPoint.lat) * Math.PI) / 180;
+          const dLon = ((compLng - gridPoint.lng) * Math.PI) / 180;
+          const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos((gridPoint.lat * Math.PI) / 180) *
+              Math.cos((compLat * Math.PI) / 180) *
+              Math.sin(dLon / 2) *
+              Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          const distance = R * c; // Distance in km
+          
+          return {
+            id: place.place_id,
+            name: place.name,
+            address: place.vicinity || 'Address unavailable',
+            rating: place.rating || null,
+            userRatingsTotal: place.user_ratings_total || 0,
+            distance: distance,
+            location: {
+              lat: compLat,
+              lng: compLng
+            },
+            // Add a simulated ranking based on the order of results
+            ranking: index + 1
+          };
+        });
+        
+        // Sort by distance for relevance
+        results.sort((a: any, b: any) => a.distance - b.distance);
+        
+        // Take top 20
+        results = results.slice(0, 20);
+      } catch (error) {
+        console.error("Error fetching competitors:", error);
+      }
+      
+      // Remove loading state
+      document.body.removeChild(loadingModal);
+      
+      // Create a styled modal window that looks like the example image
+      const modal = document.createElement("div");
+      modal.style.position = "fixed";
+      modal.style.top = "0";
+      modal.style.left = "0";
+      modal.style.width = "100%";
+      modal.style.height = "100%";
+      modal.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+      modal.style.display = "flex";
+      modal.style.alignItems = "center";
+      modal.style.justifyContent = "center";
+      modal.style.zIndex = "9999";
+      modal.style.fontFamily = "Arial, sans-serif";
+      
+      // Create modal content
+      const content = document.createElement("div");
+      content.style.backgroundColor = "white";
+      content.style.width = "90%";
+      content.style.maxWidth = "800px";
+      content.style.maxHeight = "90vh";
+      content.style.overflowY = "auto";
+      content.style.borderRadius = "8px";
+      content.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.1)";
+      
+      // Create header section
+      const header = document.createElement("div");
+      header.style.borderBottom = "1px solid #eaeaea";
+      header.style.padding = "16px 24px";
+      header.style.display = "flex";
+      header.style.alignItems = "center";
+      
+      // Back button
+      const backButton = document.createElement("button");
+      backButton.innerHTML = "← Back to list";
+      backButton.style.background = "none";
+      backButton.style.border = "none";
+      backButton.style.color = "#3b82f6";
+      backButton.style.fontSize = "14px";
+      backButton.style.cursor = "pointer";
+      backButton.style.marginRight = "auto";
+      backButton.onclick = () => document.body.removeChild(modal);
+      
+      header.appendChild(backButton);
+      
+      // Main content area
+      const mainArea = document.createElement("div");
+      mainArea.style.padding = "20px 24px";
+      
+      // Top section with business info
+      const businessSection = document.createElement("div");
+      
+      // Business name
+      const businessName = document.createElement("h2");
+      businessName.textContent = gridResult.businessInfo.name;
+      businessName.style.fontSize = "22px";
+      businessName.style.fontWeight = "bold";
+      businessName.style.color = "#3b82f6";
+      businessName.style.margin = "0 0 4px 0";
+      
+      // Business address
+      const businessAddress = document.createElement("p");
+      businessAddress.textContent = gridResult.businessInfo.address || "Address not available";
+      businessAddress.style.fontSize = "14px";
+      businessAddress.style.color = "#666";
+      businessAddress.style.margin = "0 0 16px 0";
+      
+      // Search term info
+      const searchTermInfo = document.createElement("div");
+      searchTermInfo.style.marginBottom = "20px";
+      
+      const searchTermLabel = document.createElement("span");
+      searchTermLabel.textContent = "Search term:";
+      searchTermLabel.style.fontSize = "14px";
+      searchTermLabel.style.color = "#666";
+      searchTermLabel.style.marginRight = "8px";
+      
+      const searchTermValue = document.createElement("span");
+      searchTermValue.textContent = gridResult.searchTerm;
+      searchTermValue.style.fontSize = "16px";
+      searchTermValue.style.fontWeight = "500";
+      
+      searchTermInfo.appendChild(searchTermLabel);
+      searchTermInfo.appendChild(searchTermValue);
+      
+      // Add components to business section
+      businessSection.appendChild(businessName);
+      businessSection.appendChild(businessAddress);
+      businessSection.appendChild(searchTermInfo);
+      
+      // Location section
+      const locationSection = document.createElement("div");
+      locationSection.style.padding = "16px";
+      locationSection.style.backgroundColor = "#f8fafc";
+      locationSection.style.borderRadius = "8px";
+      locationSection.style.marginBottom = "24px";
+      
+      const locationLabel = document.createElement("h3");
+      locationLabel.textContent = `Grid Location (Rank ${gridPoint.ranking})`;
+      locationLabel.style.fontSize = "16px";
+      locationLabel.style.fontWeight = "600";
+      locationLabel.style.margin = "0 0 8px 0";
+      
+      const coords = document.createElement("p");
+      coords.textContent = `Coordinates: ${gridPoint.lat.toFixed(5)}, ${gridPoint.lng.toFixed(5)}`;
+      coords.style.fontSize = "14px";
+      coords.style.color = "#666";
+      coords.style.margin = "0";
+      
+      locationSection.appendChild(locationLabel);
+      locationSection.appendChild(coords);
+      
+      // Grid view of results
+      const gridContainer = document.createElement("div");
+      
+      // Create grid header
+      const gridHeader = document.createElement("div");
+      gridHeader.style.marginBottom = "16px";
+      
+      const gridTitle = document.createElement("h3");
+      gridTitle.textContent = "Nearby Businesses";
+      gridTitle.style.fontSize = "18px";
+      gridTitle.style.fontWeight = "bold";
+      gridTitle.style.margin = "0 0 8px 0";
+      
+      const gridDescription = document.createElement("p");
+      gridDescription.textContent = `Showing search results for "${gridResult.searchTerm}" at this location:`;
+      gridDescription.style.fontSize = "14px";
+      gridDescription.style.color = "#666";
+      gridDescription.style.margin = "0";
+      
+      gridHeader.appendChild(gridTitle);
+      gridHeader.appendChild(gridDescription);
+      
+      // Create grid of search results
+      const resultsGrid = document.createElement("div");
+      resultsGrid.style.display = "grid";
+      resultsGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(220px, 1fr))";
+      resultsGrid.style.gap = "16px";
+      resultsGrid.style.marginTop = "20px";
+      
+      // If no results found
+      if (results.length === 0) {
+        const noResults = document.createElement("div");
+        noResults.style.gridColumn = "1 / -1";
+        noResults.style.padding = "24px";
+        noResults.style.textAlign = "center";
+        noResults.style.backgroundColor = "#f9fafb";
+        noResults.style.borderRadius = "8px";
+        
+        const noResultsIcon = document.createElement("div");
+        noResultsIcon.innerHTML = "&#9432;"; // Info icon
+        noResultsIcon.style.fontSize = "24px";
+        noResultsIcon.style.color = "#9ca3af";
+        noResultsIcon.style.marginBottom = "12px";
+        
+        const noResultsText = document.createElement("p");
+        noResultsText.textContent = `No businesses found for "${gridResult.searchTerm}" at this location.`;
+        noResultsText.style.margin = "0";
+        noResultsText.style.fontSize = "15px";
+        noResultsText.style.color = "#4b5563";
+        
+        noResults.appendChild(noResultsIcon);
+        noResults.appendChild(noResultsText);
+        resultsGrid.appendChild(noResults);
+      } else {
+        // Add business cards
+        results.forEach((business: any, index: number) => {
+          const card = document.createElement("div");
+          card.style.border = "1px solid #e5e7eb";
+          card.style.borderRadius = "8px";
+          card.style.overflow = "hidden";
+          card.style.backgroundColor = business.name.toLowerCase().includes(gridResult.businessInfo.name.toLowerCase()) 
+            ? "#ebf5ff" // Highlight the target business
+            : "#ffffff";
+          
+          // Card header with rank
+          const cardHeader = document.createElement("div");
+          cardHeader.style.padding = "10px 16px";
+          cardHeader.style.borderBottom = "1px solid #e5e7eb";
+          cardHeader.style.backgroundColor = business.name.toLowerCase().includes(gridResult.businessInfo.name.toLowerCase())
+            ? "#dbeafe"
+            : "#f9fafb";
+          cardHeader.style.display = "flex";
+          cardHeader.style.alignItems = "center";
+          cardHeader.style.justifyContent = "space-between";
+          
+          const rankLabel = document.createElement("div");
+          rankLabel.textContent = `Rank: ${index + 1}`;
+          rankLabel.style.fontSize = "14px";
+          rankLabel.style.fontWeight = "600";
+          rankLabel.style.color = business.name.toLowerCase().includes(gridResult.businessInfo.name.toLowerCase())
+            ? "#1e40af"
+            : "#4b5563";
+          
+          if (business.rating) {
+            const ratingSpan = document.createElement("div");
+            ratingSpan.innerHTML = `${business.rating} <span style="color: #f59e0b;">★</span>`;
+            ratingSpan.style.fontSize = "14px";
+            ratingSpan.style.fontWeight = "500";
+            
+            cardHeader.appendChild(rankLabel);
+            cardHeader.appendChild(ratingSpan);
+          } else {
+            cardHeader.appendChild(rankLabel);
+          }
+          
+          // Card body
+          const cardBody = document.createElement("div");
+          cardBody.style.padding = "16px";
+          
+          const businessTitle = document.createElement("h4");
+          businessTitle.textContent = business.name;
+          businessTitle.style.fontSize = "15px";
+          businessTitle.style.fontWeight = "600";
+          businessTitle.style.margin = "0 0 8px 0";
+          businessTitle.style.color = business.name.toLowerCase().includes(gridResult.businessInfo.name.toLowerCase())
+            ? "#2563eb"
+            : "#111827";
+          
+          const addressText = document.createElement("p");
+          addressText.textContent = business.address;
+          addressText.style.fontSize = "13px";
+          addressText.style.color = "#6b7280";
+          addressText.style.margin = "0 0 8px 0";
+          addressText.style.lineHeight = "1.4";
+          
+          const distanceText = document.createElement("p");
+          distanceText.textContent = `${business.distance.toFixed(1)} km away`;
+          distanceText.style.fontSize = "13px";
+          distanceText.style.color = "#9ca3af";
+          distanceText.style.margin = "0";
+          
+          if (business.name.toLowerCase().includes(gridResult.businessInfo.name.toLowerCase())) {
+            const yourBusinessLabel = document.createElement("div");
+            yourBusinessLabel.textContent = "Your Business";
+            yourBusinessLabel.style.display = "inline-block";
+            yourBusinessLabel.style.backgroundColor = "#3b82f6";
+            yourBusinessLabel.style.color = "white";
+            yourBusinessLabel.style.fontSize = "12px";
+            yourBusinessLabel.style.fontWeight = "500";
+            yourBusinessLabel.style.padding = "2px 8px";
+            yourBusinessLabel.style.borderRadius = "9999px";
+            yourBusinessLabel.style.marginTop = "8px";
+            
+            cardBody.appendChild(businessTitle);
+            cardBody.appendChild(addressText);
+            cardBody.appendChild(distanceText);
+            cardBody.appendChild(yourBusinessLabel);
+          } else {
+            cardBody.appendChild(businessTitle);
+            cardBody.appendChild(addressText);
+            cardBody.appendChild(distanceText);
+          }
+          
+          card.appendChild(cardHeader);
+          card.appendChild(cardBody);
+          resultsGrid.appendChild(card);
+        });
+      }
+      
+      gridContainer.appendChild(gridHeader);
+      gridContainer.appendChild(resultsGrid);
+      
+      // Bottom action buttons
+      const actionsContainer = document.createElement("div");
+      actionsContainer.style.marginTop = "24px";
+      actionsContainer.style.display = "flex";
+      actionsContainer.style.justifyContent = "flex-end";
+      actionsContainer.style.gap = "12px";
+      
+      const closeButton = document.createElement("button");
+      closeButton.textContent = "Close";
+      closeButton.style.padding = "8px 16px";
+      closeButton.style.border = "1px solid #e5e7eb";
+      closeButton.style.borderRadius = "6px";
+      closeButton.style.backgroundColor = "#f3f4f6";
+      closeButton.style.color = "#374151";
+      closeButton.style.fontSize = "14px";
+      closeButton.style.fontWeight = "500";
+      closeButton.style.cursor = "pointer";
+      closeButton.onclick = () => document.body.removeChild(modal);
+      
+      actionsContainer.appendChild(closeButton);
+      
+      // Add components to main area
+      mainArea.appendChild(businessSection);
+      mainArea.appendChild(locationSection);
+      mainArea.appendChild(gridContainer);
+      mainArea.appendChild(actionsContainer);
+      
+      // Add components to content
+      content.appendChild(header);
+      content.appendChild(mainArea);
+      
+      // Add content to modal
+      modal.appendChild(content);
+      
+      // Add to document
+      document.body.appendChild(modal);
+      
+      // Add event listener to close on background click
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error showing competitors for grid point:", error);
+      alert("Failed to load competitors for this location.");
+    }
+  };
 
   return (
     <div className="container mx-auto p-6">
@@ -894,6 +1212,47 @@ export function DetailedGridView({ gridResult, isOpen = true, onClose, onDelete 
           </div>
         </div>
       </div>
+
+      {/* Competitors Dialog */}
+      <Dialog open={competitorsModalOpen} onOpenChange={setCompetitorsModalOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Competitors for {gridResult.businessInfo.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 rounded-md bg-blue-50">
+              <h3 className="font-medium mb-1">Search Term</h3>
+              <p>"{gridResult.searchTerm}"</p>
+            </div>
+            
+            {competitors.length === 0 ? (
+              <div className="text-center p-8 bg-gray-50 rounded-md">
+                <p className="text-gray-500">No competitor data available. Click a grid point on the map to view competitors for that location.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {competitors.map((competitor) => (
+                  <div 
+                    key={competitor.id} 
+                    className="border rounded-md p-4 hover:shadow-md transition-shadow"
+                  >
+                    <h3 className="font-medium">{competitor.name}</h3>
+                    <div className="text-sm text-gray-500 mt-1">Ranking: {competitor.ranking}</div>
+                    <div className="text-sm text-gray-500">Distance: {competitor.distance.toFixed(2)} km</div>
+                    {competitor.rating && (
+                      <div className="flex items-center mt-2">
+                        <span className="text-sm bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                          Rating: {competitor.rating}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
