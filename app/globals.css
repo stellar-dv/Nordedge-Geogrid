@@ -142,6 +142,27 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Enable backdrop blur in all browsers */
+  @supports not (backdrop-filter: blur(4px)) {
+    .backdrop-blur-sm,
+    .backdrop-blur-md,
+    .backdrop-blur-lg,
+    .backdrop-blur-xl,
+    .backdrop-blur-2xl,
+    .backdrop-blur-3xl {
+      background-color: rgba(255, 255, 255, 0.85);
+    }
+
+    .dark .backdrop-blur-sm,
+    .dark .backdrop-blur-md,
+    .dark .backdrop-blur-lg,
+    .dark .backdrop-blur-xl,
+    .dark .backdrop-blur-2xl,
+    .dark .backdrop-blur-3xl {
+      background-color: rgba(15, 23, 42, 0.85);
+    }
+  }
 }
 
 /* Custom animation delays */

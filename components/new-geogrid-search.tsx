@@ -752,16 +752,22 @@ export function NewGeoGridSearch() {
         const lng = west + (j * (east - west) / (currentGridSize - 1));
         const gridIndex = i * currentGridSize + j;
 
-        // Create marker with rank icon image
+        // Create simple marker for the initial grid preview
+        const svgMarker = {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: "#E0E0E0",  // Light gray circle initially
+          fillOpacity: 0.5,
+          strokeColor: "#FFFFFF",
+          strokeWeight: 1.5,
+          scale: 8,
+          labelOrigin: new google.maps.Point(0, 0)
+        };
+
         const marker = new google.maps.Marker({
           position: { lat, lng },
           map: mapInstanceRef.current,
           draggable: false,
-          icon: {
-            url: '/images/rank-icons/X.png', // Use X icon as default for initial state
-            scaledSize: new google.maps.Size(32, 32),
-            anchor: new google.maps.Point(16, 16)
-          },
+          icon: svgMarker,
           clickable: true,
           title: `Grid Location (${i+1},${j+1})`,
           optimized: false,
@@ -775,113 +781,308 @@ export function NewGeoGridSearch() {
         // Add click listener
         const infoWindow = new google.maps.InfoWindow();
         
-        marker.addListener('click', function() {
+        marker.addListener('click', async function() {
           console.log(`Grid location clicked at position ${i},${j}`);
           
-          // Show info window with loading content
+          // Get the exact ranking directly from the marker
+          const markerRanking = (marker as any).ranking || i * currentGridSize + j;
+          console.log(`Business ranking at this point: ${markerRanking}`);
+          
+          // Show loading indicator immediately
           infoWindow.setContent(`
-            <div style="padding: 12px; max-width: 240px; font-family: 'LocalVikingAlt', sans-serif;">
-              <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Grid Location</h3>
-              <p style="margin: 0 0 8px 0; font-size: 14px;">Position: Row ${i+1}, Column ${j+1}</p>
-              <p style="margin: 0; font-size: 12px; color: #666;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
-              <div style="margin-top: 12px; text-align: center;">
-                <button id="fetch-rankings-${gridIndex}" style="background-color: #4285F4; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;">
-                  Check Rankings
-                </button>
-              </div>
+            <div style="padding: 16px; text-align: center;">
+              <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Loading Competitors</h3>
+              <p style="margin: 0 0 12px 0; color: #5f6368;">Fetching businesses at ranking position #${markerRanking}...</p>
+              <div class="loading-spinner" style="margin: 12px auto; border: 3px solid #f3f3f3; border-top: 3px solid #4285F4; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite;"></div>
+              <style>
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              </style>
             </div>
           `);
           
           infoWindow.open(mapInstanceRef.current, marker);
           
-          // Add event listener for the button after info window is shown
-          google.maps.event.addListener(infoWindow, 'domready', function() {
-            const button = document.getElementById(`fetch-rankings-${gridIndex}`);
-            if (button) {
-              button.addEventListener('click', async function() {
-                console.log("Button clicked, fetching rankings...");
-                
-                infoWindow.setContent(`
-                  <div style="padding: 12px; text-align: center;">
-                    <p>Loading nearby businesses...</p>
-                    <div class="loading-spinner" style="margin: 10px auto;"></div>
-                  </div>
-                `);
-                
-                try {
-                  // Perform the search using the current search term
-                  const response = await fetch('/api/places-search', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      query: searchTerm || 'restaurant',
-                      location: { lat, lng },
-                      radius: 2000, // 2km radius
-                    }),
-                  });
+          // Fetch all nearby businesses with pagination
+          try {
+            let allBusinesses: any[] = [];
+            let nextPageToken: string | null = null;
+            
+            // Fetch first page
+            const fetchPage = async (pageToken?: string) => {
+              const response = await fetch('/api/places-search', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  query: searchTerm || 'restaurant',
+                  location: { lat, lng },
+                  radius: 2000, // 2km radius
+                  pageToken: pageToken
+                }),
+              });
+              
+              if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+              }
+              
+              return await response.json();
+            };
+            
+            // Initial request
+            const firstPageData = await fetchPage();
+            allBusinesses = [...firstPageData.results];
+            nextPageToken = firstPageData.nextPageToken;
+            
+            // Update info window to show progress if there are more pages
+            if (nextPageToken) {
+              infoWindow.setContent(`
+                <div style="padding: 16px; text-align: center;">
+                  <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Loading Competitors</h3>
+                  <p style="margin: 0 0 12px 0; color: #5f6368;">Found ${allBusinesses.length} businesses so far...</p>
+                  <div class="loading-spinner" style="margin: 12px auto; border: 3px solid #f3f3f3; border-top: 3px solid #4285F4; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite;"></div>
+                </div>
+              `);
+            }
+            
+            // Fetch additional pages (up to 2 more pages, for a total of 60 results)
+            for (let pageCount = 0; pageCount < 2 && nextPageToken; pageCount++) {
+              // Google requires a short delay before using the next_page_token
+              await new Promise(resolve => setTimeout(resolve, 1500));
+              
+              try {
+                const nextPageData = await fetchPage(nextPageToken);
+                if (nextPageData.results && nextPageData.results.length > 0) {
+                  allBusinesses = [...allBusinesses, ...nextPageData.results];
+                  nextPageToken = nextPageData.nextPageToken;
                   
-                  if (!response.ok) {
-                    throw new Error(`Error: ${response.status}`);
+                  // Update progress
+                  if (nextPageToken) {
+                    infoWindow.setContent(`
+                      <div style="padding: 16px; text-align: center;">
+                        <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Loading Competitors</h3>
+                        <p style="margin: 0 0 12px 0; color: #5f6368;">Found ${allBusinesses.length} businesses so far...</p>
+                        <div class="loading-spinner" style="margin: 12px auto; border: 3px solid #f3f3f3; border-top: 3px solid #4285F4; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite;"></div>
+                      </div>
+                    `);
                   }
-                  
-                  const data = await response.json();
-                  
-                  // Find the selected business in results
-                  let businessIndex = -1;
-                  if (selectedBusiness) {
-                    businessIndex = data.results.findIndex(
-                      (place: any) => place.name.toLowerCase().includes(selectedBusiness!.name.toLowerCase())
-                    );
+                } else {
+                  break;
+                }
+              } catch (e) {
+                console.error("Error fetching additional page:", e);
+                break;
+              }
+            }
+            
+            // Find if the selected business is in results
+            let businessIndex = -1;
+            if (selectedBusiness) {
+              businessIndex = allBusinesses.findIndex(
+                (place: any) => place.name.toLowerCase().includes(selectedBusiness!.name.toLowerCase())
+              );
+            }
+            
+            // Get the grid point ranking (this is the position where the selected business should appear)
+            const gridPointRanking = (marker as any).ranking || i * currentGridSize + j;
+
+            // Create clear text at the top showing the ranking
+            const originalRankText = businessIndex !== -1 ? `(Original rank: #${businessIndex + 1})` : '(Not found in original results)';
+            const rankingHeader = `<div style="background-color: #e8f0fe; padding: 8px 12px; margin-bottom: 12px; border-radius: 6px; border-left: 3px solid #1a73e8; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: bold; color: #1a73e8;">
+                Your business appears at position <span style="font-size: 18px;">#${gridPointRanking}</span> in this location
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #4d7cc3;">
+                ${originalRankText}
+              </p>
+            </div>`;
+
+            // Create a completely new array for the simulated results
+            const simulatedBusinesses: any[] = [];
+
+            // Create a copy of all businesses excluding the selected business
+            if (selectedBusiness) {
+              // First, add original rank to all businesses
+              allBusinesses.forEach((place: any, index: number) => {
+                place.originalRank = index + 1;
+              });
+
+              // Filter out any instances of the selected business
+              const filteredBusinesses = allBusinesses.filter(
+                (place: any) => !place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase())
+              );
+              
+              // Create a business entry for the selected business
+              const selectedBusinessEntry = {
+                name: selectedBusiness.name,
+                vicinity: selectedBusiness.address || "Address unavailable",
+                place_id: selectedBusiness.placeId || "placeholder_id",
+                rating: 0,
+                user_ratings_total: 0,
+                geometry: {
+                  location: {
+                    lat: 0,
+                    lng: 0
                   }
+                },
+                // If found in original results, use that original rank, otherwise mark as N/A
+                originalRank: businessIndex !== -1 ? businessIndex + 1 : undefined,
+                isPlaceholder: businessIndex === -1 // Mark as a placeholder if it wasn't in original results
+              };
+              
+              // Add location if available
+              if (selectedBusiness.location && typeof selectedBusiness.location === 'object') {
+                selectedBusinessEntry.geometry.location.lat = selectedBusiness.location.lat;
+                selectedBusinessEntry.geometry.location.lng = selectedBusiness.location.lng;
+              }
+              
+              // Add businesses to the simulated list up to the ranking position
+              for (let i = 0; i < markerRanking - 1 && i < filteredBusinesses.length; i++) {
+                simulatedBusinesses.push(filteredBusinesses[i]);
+              }
+              
+              // Insert the selected business at the exact ranking position
+              simulatedBusinesses.push(selectedBusinessEntry);
+              
+              // Add remaining businesses
+              for (let i = markerRanking - 1; i < filteredBusinesses.length; i++) {
+                simulatedBusinesses.push(filteredBusinesses[i]);
+              }
+              
+              // Replace the original list with our simulated list
+              allBusinesses = simulatedBusinesses;
+            }
+            
+            // Function to render business page
+            const renderBusinessPage = (page = 1) => {
+              const totalResults = allBusinesses.length;
+              const itemsPerPage = 5;
+              const totalPages = Math.ceil(totalResults / itemsPerPage);
+              const startIndex = (page - 1) * itemsPerPage;
+              const endIndex = Math.min(startIndex + itemsPerPage, totalResults);
+              const currentPageItems = allBusinesses.slice(startIndex, endIndex);
+              
+              // Create styled table for business rankings
+              let content = `
+                <div style="padding: 12px; width: 350px; font-family: sans-serif;">
+                  <h3 style="font-weight: bold; margin: 0 0 8px 0;">Nearby Competitors</h3>
+                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #444;">
+                    <strong>${totalResults}</strong> businesses found near
+                    <span style="color: #1a73e8; font-weight: 500;">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
+                  </p>
+              `;
+              
+              // Add the ranking header to make it very clear what position the business has
+              content += rankingHeader;
+              
+              if (totalResults > 0) {
+                content += `
+                  <div style="margin-top: 8px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                      <thead>
+                        <tr style="background-color: #f8f9fa; text-align: left;">
+                          <th style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500;">Rank</th>
+                          <th style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500;">Business</th>
+                          <th style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500; text-align: center;">Rating</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                `;
+                
+                // Show current page results
+                currentPageItems.forEach((place: any, idx: number) => {
+                  const actualRank = startIndex + idx + 1;
+                  const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
+                  const rating = place.rating ? place.rating.toFixed(1) : 'N/A';
+                  const ratingCount = place.user_ratings_total ? `(${place.user_ratings_total})` : '';
+                  // Include the original rank in Google results or "N/A" if it's the placeholder
+                  const originalRank = place.originalRank !== undefined ? `#${place.originalRank}` : 'N/A';
                   
-                  // Create result content
-                  let content = `
-                    <div style="padding: 12px; max-width: 300px; font-family: 'LocalVikingAlt', sans-serif;">
-                      <h3 style="font-weight: bold; margin: 0 0 8px 0;">Search Results</h3>
-                      <p style="margin: 0 0 8px 0; font-size: 14px;">Keyword: "${searchTerm || 'restaurant'}"</p>
+                  content += `
+                    <tr style="${isTarget ? 'background-color: #e8f0fe;' : idx % 2 === 1 ? 'background-color: #f8f9fa;' : ''}">
+                      <td style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500; color: #444;">#${actualRank}</td>
+                      <td style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; ${isTarget ? 'font-weight: 500; color: #1a73e8;' : ''}">
+                        <div>${place.name} ${isTarget ? '<span style="background-color: #e0eafc; color: #1a73e8; font-size: 11px; padding: 2px 4px; border-radius: 4px; margin-left: 4px;">Your Business</span>' : ''}</div>
+                        <div style="font-size: 11px; color: #70757a; margin-top: 2px;">Original Rank: ${originalRank}</div>
+                      </td>
+                      <td style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; text-align: center;">
+                        <span style="color: #fbbc04;">★</span> ${rating} <span style="color: #70757a; font-size: 11px;">${ratingCount}</span>
+                      </td>
+                    </tr>
                   `;
-                  
-                  if (data.results && data.results.length > 0) {
-                    content += `<div style="margin-top: 8px;"><strong>Top 5 Results:</strong></div><ol style="margin: 4px 0; padding-left: 20px;">`;
-                    
-                    // Show top 5 results
-                    const topResults = data.results.slice(0, 5);
-                    topResults.forEach((place: any) => {
-                      const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
-                      content += `<li style="${isTarget ? 'font-weight: bold; color: #4285F4;' : ''}">${place.name} ${isTarget ? '(Your Business)' : ''}</li>`;
-                    });
-                    
-                    content += `</ol>`;
-                    
-                    // Add business ranking info
-                    if (selectedBusiness) {
-                      if (businessIndex >= 0) {
-                        content += `<p style="margin-top: 12px; font-weight: bold; color: #4285F4;">Your Business Ranks #${businessIndex + 1}</p>`;
-                      } else {
-                        content += `<p style="margin-top: 12px; color: #EA4335;">Your Business Not Found in Top Results</p>`;
-                      }
-                    }
-                  } else {
-                    content += `<p style="margin-top: 8px;">No businesses found for this search.</p>`;
-                  }
-                  
-                  content += `</div>`;
-                  infoWindow.setContent(content);
-                  
-                } catch (error) {
-                  console.error('Error fetching rankings:', error);
-                  infoWindow.setContent(`
-                    <div style="padding: 12px; max-width: 240px;">
-                      <h3 style="font-weight: bold; margin: 0 0 8px 0;">Error</h3>
-                      <p style="color: #EA4335;">Failed to load ranking data. Please try again.</p>
+                });
+                
+                content += `
+                      </tbody>
+                    </table>
+                  </div>
+                `;
+                
+                // Add pagination controls if needed
+                if (totalPages > 1) {
+                  content += `
+                    <div style="display: flex; justify-content: center; align-items: center; margin-top: 12px; gap: 8px;">
+                      <button id="prev-page" style="padding: 4px 8px; border: 1px solid #dadce0; background-color: ${page > 1 ? '#f8f9fa' : '#f1f3f4'}; border-radius: 4px; cursor: ${page > 1 ? 'pointer' : 'default'}; color: ${page > 1 ? '#1a73e8' : '#80868b'};" ${page <= 1 ? 'disabled' : ''}>
+                        &#x25C0; Prev
+                      </button>
+                      <span style="color: #5f6368; font-size: 13px;">Page ${page} of ${totalPages}</span>
+                      <button id="next-page" style="padding: 4px 8px; border: 1px solid #dadce0; background-color: ${page < totalPages ? '#f8f9fa' : '#f1f3f4'}; border-radius: 4px; cursor: ${page < totalPages ? 'pointer' : 'default'}; color: ${page < totalPages ? '#1a73e8' : '#80868b'};" ${page >= totalPages ? 'disabled' : ''}>
+                        Next &#x25B6;
+                      </button>
                     </div>
-                  `);
+                  `;
+                }
+              } else {
+                content += `<div style="padding: 16px; text-align: center; background-color: #f8f9fa; border-radius: 8px; color: #5f6368;">No businesses found for this search term in this area.</div>`;
+              }
+              
+              content += `
+                <div style="margin-top: 12px; font-size: 12px; color: #5f6368; text-align: center;">
+                  Showing results for "${searchTerm || 'restaurant'}" within 2km
+                </div>
+              </div>`;
+              
+              // Set content and add event listeners for pagination
+              infoWindow.setContent(content);
+              
+              // Add event listeners for pagination buttons
+              google.maps.event.addListener(infoWindow, 'domready', function() {
+                const prevButton = document.getElementById('prev-page');
+                const nextButton = document.getElementById('next-page');
+                
+                if (prevButton) {
+                  prevButton.addEventListener('click', function() {
+                    if (page > 1) {
+                      renderBusinessPage(page - 1);
+                    }
+                  });
+                }
+                
+                if (nextButton) {
+                  nextButton.addEventListener('click', function() {
+                    if (page < totalPages) {
+                      renderBusinessPage(page + 1);
+                    }
+                  });
                 }
               });
-            }
-          });
+            };
+            
+            // Initial render with page 1
+            renderBusinessPage(1);
+            
+          } catch (error) {
+            console.error('Error fetching competitors:', error);
+            infoWindow.setContent(`
+              <div style="padding: 16px; max-width: 300px; text-align: center;">
+                <h3 style="font-weight: bold; margin: 0 0 8px 0; color: #d93025;">Error</h3>
+                <p style="color: #5f6368;">Failed to load nearby businesses. Please try again.</p>
+              </div>
+            `);
+          }
         });
 
         markers.push(marker);
@@ -921,72 +1122,66 @@ export function NewGeoGridSearch() {
         fullscreenControl: false,
         styles: [
           {
-            featureType: "water",
-            elementType: "geometry",
-            stylers: [{ color: "#e9e9e9" }, { lightness: 17 }],
+            "featureType": "administrative",
+            "elementType": "geometry",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "landscape",
-            elementType: "geometry",
-            stylers: [{ color: "#f5f5f5" }, { lightness: 20 }],
+            "featureType": "administrative.land_parcel",
+            "elementType": "labels",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "road.highway",
-            elementType: "geometry.fill",
-            stylers: [{ color: "#ffffff" }, { lightness: 17 }],
+            "featureType": "poi",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "road.highway",
-            elementType: "geometry.stroke",
-            stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }],
+            "featureType": "poi",
+            "elementType": "labels.text",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "road.arterial",
-            elementType: "geometry.fill",
-            stylers: [{ color: "#ffffff" }, { lightness: 18 }],
+            "featureType": "road",
+            "elementType": "labels.icon",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "road.local",
-            elementType: "geometry",
-            stylers: [{ color: "#ffffff" }, { lightness: 16 }],
+            "featureType": "road.local",
+            "elementType": "labels",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "poi",
-            elementType: "geometry",
-            stylers: [{ color: "#f5f5f5" }, { lightness: 21 }],
-          },
-          {
-            featureType: "poi.park",
-            elementType: "geometry",
-            stylers: [{ color: "#dedede" }, { lightness: 21 }],
-          },
-          {
-            elementType: "labels.text.stroke",
-            stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }],
-          },
-          {
-            elementType: "labels.text.fill",
-            stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }],
-          },
-          {
-            elementType: "labels.icon",
-            stylers: [{ visibility: "off" }],
-          },
-          {
-            featureType: "transit",
-            elementType: "geometry",
-            stylers: [{ color: "#f2f2f2" }, { lightness: 19 }],
-          },
-          {
-            featureType: "administrative",
-            elementType: "geometry.fill",
-            stylers: [{ color: "#fefefe" }, { lightness: 20 }],
-          },
-          {
-            featureType: "administrative",
-            elementType: "geometry.stroke",
-            stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }],
-          },
+            "featureType": "transit",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
+          }
         ],
       })
 
@@ -1077,121 +1272,65 @@ export function NewGeoGridSearch() {
           fullscreenControl: false,
           styles: [
             {
-              elementType: "geometry",
-              stylers: [{ color: "#ebe3cd" }]
+              "featureType": "administrative",
+              "elementType": "geometry",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#523735" }]
+              "featureType": "administrative.land_parcel",
+              "elementType": "labels",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              elementType: "labels.text.stroke",
-              stylers: [{ color: "#f5f1e6" }]
+              "featureType": "poi",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "administrative",
-              elementType: "geometry.stroke",
-              stylers: [{ color: "#c9b2a6" }]
+              "featureType": "poi",
+              "elementType": "labels.text",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "administrative.land_parcel",
-              elementType: "geometry.stroke",
-              stylers: [{ color: "#dcd2be" }]
+              "featureType": "road",
+              "elementType": "labels.icon",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "administrative.land_parcel",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#ae9e90" }]
+              "featureType": "road.local",
+              "elementType": "labels",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "landscape.natural",
-              elementType: "geometry",
-              stylers: [{ color: "#dfd2ae" }]
-            },
-            {
-              featureType: "poi",
-              elementType: "geometry",
-              stylers: [{ color: "#dfd2ae" }]
-            },
-            {
-              featureType: "poi",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#93817c" }]
-            },
-            {
-              featureType: "poi.park",
-              elementType: "geometry.fill",
-              stylers: [{ color: "#a5b076" }]
-            },
-            {
-              featureType: "poi.park",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#447530" }]
-            },
-            {
-              featureType: "road",
-              elementType: "geometry",
-              stylers: [{ color: "#f5f1e6" }]
-            },
-            {
-              featureType: "road.arterial",
-              elementType: "geometry",
-              stylers: [{ color: "#fdfcf8" }]
-            },
-            {
-              featureType: "road.highway",
-              elementType: "geometry",
-              stylers: [{ color: "#f8c967" }]
-            },
-            {
-              featureType: "road.highway",
-              elementType: "geometry.stroke",
-              stylers: [{ color: "#e9bc62" }]
-            },
-            {
-              featureType: "road.highway.controlled_access",
-              elementType: "geometry",
-              stylers: [{ color: "#e98d58" }]
-            },
-            {
-              featureType: "road.highway.controlled_access",
-              elementType: "geometry.stroke",
-              stylers: [{ color: "#db8555" }]
-            },
-            {
-              featureType: "road.local",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#806b63" }]
-            },
-            {
-              featureType: "transit.line",
-              elementType: "geometry",
-              stylers: [{ color: "#dfd2ae" }]
-            },
-            {
-              featureType: "transit.line",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#8f7d77" }]
-            },
-            {
-              featureType: "transit.line",
-              elementType: "labels.text.stroke",
-              stylers: [{ color: "#ebe3cd" }]
-            },
-            {
-              featureType: "transit.station",
-              elementType: "geometry",
-              stylers: [{ color: "#dfd2ae" }]
-            },
-            {
-              featureType: "water",
-              elementType: "geometry.fill",
-              stylers: [{ color: "#b9d3c2" }]
-            },
-            {
-              featureType: "water",
-              elementType: "labels.text.fill",
-              stylers: [{ color: "#92998d" }]
+              "featureType": "transit",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             }
           ],
         })
@@ -1846,6 +1985,11 @@ export function NewGeoGridSearch() {
         Number.parseFloat(gridDistance)
       )
 
+      // Ensure gridPoints is not undefined before using it
+      if (!gridPoints || gridPoints.length === 0) {
+        throw new Error("Failed to generate grid points");
+      }
+
       // Step 4: Fetch real rankings
       updateProgress()
       const rankings = await fetchRankingData(
@@ -1877,9 +2021,11 @@ export function NewGeoGridSearch() {
       const topRankings = flattenedValues.filter((val) => val <= 20)
       const avgTopRanking =
         topRankings.length > 0 ? topRankings.reduce((sum, val) => sum + val, 0) / topRankings.length : 0
+      
+      // Standard SoLV calculation - percentage of places where business appears in top 10 results
       const solvPercentage = Math.round(
-        (flattenedValues.filter((val) => val <= 3).length / flattenedValues.length) * 100,
-      )
+        (flattenedValues.filter((val) => val <= 10).length / flattenedValues.length) * 100
+      );
 
       // Function to fetch and display nearby businesses for a grid point
       const showNearbyBusinesses = async (lat: number, lng: number, gridIndex: number) => {
@@ -2003,7 +2149,12 @@ export function NewGeoGridSearch() {
               
               // Store ranking in marker for info window access
               (marker as any).ranking = ranking;
+              
+              // Add custom data to each marker to store its ranking
+              (marker as any).businessRanking = ranking;
             }
+            
+            markerIndex++;
           }
         }
       }
@@ -2759,6 +2910,7 @@ export function NewGeoGridSearch() {
                               { value: "0.5", label: "500m" },
                               { value: "1", label: "1km" },
                               { value: "2", label: "2km" },
+                              { value: "2.5", label: "2.5km" },
                               { value: "5", label: "5km" },
                               { value: "10", label: "10km" },
                               { value: "15", label: "15km" },

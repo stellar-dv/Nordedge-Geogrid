@@ -26,7 +26,8 @@ export function BusinessInfoForm({ onSubmit }: BusinessInfoFormProps) {
     e.preventDefault()
 
     onSubmit({
-      businessName,
+      name: businessName,
+      address: location,
       category,
       location,
       keywords: keywords.split(",").map((k) => k.trim()),

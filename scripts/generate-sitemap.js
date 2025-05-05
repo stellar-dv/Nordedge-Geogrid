@@ -7,11 +7,6 @@ const routes = [
   '',
   '/grid',
   '/new-search',
-  '/gallery',
-  '/reports',
-  '/bulk-posting',
-  '/reviews',
-  '/locations',
 ];
 
 const generateSitemap = () => {

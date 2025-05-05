@@ -60,10 +60,467 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabase = createClient(supabaseUrl, supabaseKey)
 
+// Map Styles
+const silverStyle = [
+  {
+    elementType: "geometry",
+    stylers: [{ color: "#f5f5f5" }]
+  },
+  {
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }]
+  },
+  {
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#616161" }]
+  },
+  {
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#f5f5f5" }]
+  },
+  {
+    featureType: "administrative.land_parcel",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#bdbdbd" }]
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#eeeeee" }]
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#757575" }]
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#e5e5e5" }]
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9e9e9e" }]
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#ffffff" }]
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#757575" }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#dadada" }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#616161" }]
+  },
+  {
+    featureType: "road.local",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9e9e9e" }]
+  },
+  {
+    featureType: "transit.line",
+    elementType: "geometry",
+    stylers: [{ color: "#e5e5e5" }]
+  },
+  {
+    featureType: "transit.station",
+    elementType: "geometry",
+    stylers: [{ color: "#eeeeee" }]
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#c9c9c9" }]
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9e9e9e" }]
+  }
+];
 
+// Night Mode - Dark & Elegant
+const nightStyle = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }]
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }]
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#263c3f" }]
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#6b9a76" }]
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#38414e" }]
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#212a37" }]
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9ca5b3" }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#746855" }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1f2835" }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#f3d19c" }]
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#2f3948" }]
+  },
+  {
+    featureType: "transit.station",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }]
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#17263c" }]
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#515c6d" }]
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#17263c" }]
+  }
+];
 
-// Utility to get user location (browser first, then IP)
+// Retro Style - Vintage Inspired
+const retroStyle = [
+  {
+    elementType: "geometry",
+    stylers: [{ color: "#ebe3cd" }]
+  },
+  {
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#523735" }]
+  },
+  {
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#f5f1e6" }]
+  },
+  {
+    featureType: "administrative",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#c9b2a6" }]
+  },
+  {
+    featureType: "administrative.land_parcel",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#dcd2be" }]
+  },
+  {
+    featureType: "administrative.land_parcel",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#ae9e90" }]
+  },
+  {
+    featureType: "landscape.natural",
+    elementType: "geometry",
+    stylers: [{ color: "#dfd2ae" }]
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#dfd2ae" }]
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#93817c" }]
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry.fill",
+    stylers: [{ color: "#a5b076" }]
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#447530" }]
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#f5f1e6" }]
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "geometry",
+    stylers: [{ color: "#fdfcf8" }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#f8c967" }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#e9bc62" }]
+  },
+  {
+    featureType: "road.highway.controlled_access",
+    elementType: "geometry",
+    stylers: [{ color: "#e98d58" }]
+  },
+  {
+    featureType: "road.highway.controlled_access",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#db8555" }]
+  },
+  {
+    featureType: "road.local",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#806b63" }]
+  },
+  {
+    featureType: "transit.line",
+    elementType: "geometry",
+    stylers: [{ color: "#dfd2ae" }]
+  },
+  {
+    featureType: "transit.line",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#8f7d77" }]
+  },
+  {
+    featureType: "transit.line",
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#ebe3cd" }]
+  },
+  {
+    featureType: "transit.station",
+    elementType: "geometry",
+    stylers: [{ color: "#dfd2ae" }]
+  },
+  {
+    featureType: "water",
+    elementType: "geometry.fill",
+    stylers: [{ color: "#b9d3c2" }]
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#92998d" }]
+  }
+];
 
+// Clean Blue - Modern with Blue Accents
+const cleanBlueStyle = [
+  {
+    featureType: "administrative",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#444444" }]
+  },
+  {
+    featureType: "landscape",
+    elementType: "all",
+    stylers: [{ color: "#f2f2f2" }]
+  },
+  {
+    featureType: "poi",
+    elementType: "all",
+    stylers: [{ visibility: "off" }]
+  },
+  {
+    featureType: "road",
+    elementType: "all",
+    stylers: [{ saturation: -100 }, { lightness: 45 }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "all",
+    stylers: [{ visibility: "simplified" }]
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }]
+  },
+  {
+    featureType: "transit",
+    elementType: "all",
+    stylers: [{ visibility: "off" }]
+  },
+  {
+    featureType: "water",
+    elementType: "all",
+    stylers: [{ color: "#4f595d" }, { visibility: "on" }]
+  }
+];
+
+// Subtle Grayscale - Professional & Minimalist
+const subtleGrayscale = [
+  {
+    featureType: "administrative",
+    elementType: "all",
+    stylers: [{ saturation: -100 }, { lightness: 20 }]
+  },
+  {
+    featureType: "landscape",
+    elementType: "all",
+    stylers: [{ saturation: -100 }, { lightness: 60 }]
+  },
+  {
+    featureType: "poi",
+    elementType: "all",
+    stylers: [{ saturation: -100 }, { lightness: 45 }, { visibility: "simplified" }]
+  },
+  {
+    featureType: "road",
+    elementType: "all",
+    stylers: [{ saturation: -100 }]
+  },
+  {
+    featureType: "road.highway",
+    elementType: "all",
+    stylers: [{ visibility: "simplified" }, { saturation: -100 }]
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "all",
+    stylers: [{ saturation: -100 }, { lightness: 20 }]
+  },
+  {
+    featureType: "road.local",
+    elementType: "all",
+    stylers: [{ saturation: -100 }, { lightness: 40 }]
+  },
+  {
+    featureType: "transit",
+    elementType: "all",
+    stylers: [{ saturation: -100 }, { visibility: "simplified" }]
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ hue: "#ffff00" }, { saturation: -97 }, { lightness: -25 }]
+  },
+  {
+    featureType: "water",
+    elementType: "labels",
+    stylers: [{ saturation: -100 }, { lightness: -30 }]
+  }
+];
+
+// Default style from LocalViking
+const defaultMapStyle = [
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#e9e9e9" }, { lightness: 17 }],
+  },
+  {
+    featureType: "landscape",
+    elementType: "geometry",
+    stylers: [{ color: "#f5f5f5" }, { lightness: 20 }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.fill",
+    stylers: [{ color: "#ffffff" }, { lightness: 17 }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }],
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "geometry.fill",
+    stylers: [{ color: "#ffffff" }, { lightness: 18 }],
+  },
+  {
+    featureType: "road.local",
+    elementType: "geometry",
+    stylers: [{ color: "#ffffff" }, { lightness: 16 }],
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#f5f5f5" }, { lightness: 21 }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#dedede" }, { lightness: 21 }],
+  },
+  {
+    elementType: "labels.text.stroke",
+    stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }],
+  },
+  {
+    elementType: "labels.text.fill",
+    stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }],
+  },
+  {
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#f2f2f2" }, { lightness: 19 }],
+  },
+  {
+    featureType: "administrative",
+    elementType: "geometry.fill",
+    stylers: [{ color: "#fefefe" }, { lightness: 20 }],
+  },
+  {
+    featureType: "administrative",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }],
+  },
+];
 
 export function NewGeoGridSearch() {
   const [activeTab, setActiveTab] = useState("new-geogrid")
@@ -114,7 +571,8 @@ export function NewGeoGridSearch() {
     defaultDistance: "2.5",
     autoSave: true,
     emailReports: false,
-    darkMode: false
+    darkMode: false,
+    mapStyle: "default" // Added map style option
   });
 
   const mapRef = useRef<HTMLDivElement>(null)
@@ -234,7 +692,7 @@ export function NewGeoGridSearch() {
         const data = await response.json();
         if (!data.results || data.results.length === 0) {
           return `<div class="p-3">
-            <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+            <h3 class="font-bold">Grid Location</h3>
             <p class="text-sm mt-1">No businesses found for "${searchTerm || 'restaurant'}"</p>
             <p class="text-xs mt-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
             <p class="text-xs">Distance: ${gridDistance}km from center</p>
@@ -247,7 +705,7 @@ export function NewGeoGridSearch() {
         );
 
         let content = `<div class="p-3">
-          <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+          <h3 class="font-bold">Grid Location</h3>
           <p class="text-sm mt-1">Search: "${searchTerm || 'restaurant'}"</p>
           <p class="text-xs mb-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
           <div class="border-t pt-2">
@@ -278,7 +736,7 @@ export function NewGeoGridSearch() {
       } catch (error) {
         console.error('Error fetching nearby businesses:', error);
         return `<div class="p-3">
-          <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+          <h3 class="font-bold">Grid Location</h3>
           <p class="text-sm text-red-600">Error loading data</p>
           <p class="text-xs mt-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
         </div>`;
@@ -294,14 +752,14 @@ export function NewGeoGridSearch() {
         const lng = west + (j * (east - west) / (currentGridSize - 1));
         const gridIndex = i * currentGridSize + j;
 
-        // Create SVG marker with LocalViking font
+        // Create simple marker for the initial grid preview
         const svgMarker = {
           path: google.maps.SymbolPath.CIRCLE,
-          fillColor: "#4285F4",
-          fillOpacity: 0.8,
+          fillColor: "#E0E0E0",  // Light gray circle initially
+          fillOpacity: 0.5,
           strokeColor: "#FFFFFF",
           strokeWeight: 1.5,
-          scale: 10,
+          scale: 8,
           labelOrigin: new google.maps.Point(0, 0)
         };
 
@@ -310,15 +768,8 @@ export function NewGeoGridSearch() {
           map: mapInstanceRef.current,
           draggable: false,
           icon: svgMarker,
-          label: {
-            text: (gridIndex + 1).toString(),
-            color: "#FFFFFF",
-            fontFamily: "LocalVikingAlt, sans-serif",
-            fontSize: "11px",
-            fontWeight: "bold"
-          },
           clickable: true,
-          title: `Grid Point #${gridIndex + 1}`,
+          title: `Grid Location (${i+1},${j+1})`,
           optimized: false,
           zIndex: 1
         });
@@ -330,113 +781,293 @@ export function NewGeoGridSearch() {
         // Add click listener
         const infoWindow = new google.maps.InfoWindow();
         
-        marker.addListener('click', function() {
-          console.log(`Grid point clicked: ${gridIndex} at position ${i},${j}`);
+        marker.addListener('click', async function() {
+          console.log(`Grid location clicked at position ${i},${j}`);
           
-          // Show info window with loading content
+          // Get the exact ranking directly from the marker
+          const markerRanking = (marker as any).ranking || i * currentGridSize + j;
+          console.log(`Business ranking at this point: ${markerRanking}`);
+          
+          // Show loading indicator immediately
           infoWindow.setContent(`
-            <div style="padding: 12px; max-width: 240px; font-family: 'LocalVikingAlt', sans-serif;">
-              <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Grid Point #${gridIndex + 1}</h3>
-              <p style="margin: 0 0 8px 0; font-size: 14px;">Position: Row ${i+1}, Column ${j+1}</p>
-              <p style="margin: 0; font-size: 12px; color: #666;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
-              <div style="margin-top: 12px; text-align: center;">
-                <button id="fetch-rankings-${gridIndex}" style="background-color: #4285F4; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;">
-                  Check Rankings
-                </button>
-              </div>
+            <div style="padding: 16px; text-align: center;">
+              <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Loading Competitors</h3>
+              <p style="margin: 0 0 12px 0; color: #5f6368;">Fetching businesses at ranking position #${markerRanking}...</p>
+              <div class="loading-spinner" style="margin: 12px auto; border: 3px solid #f3f3f3; border-top: 3px solid #4285F4; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite;"></div>
+              <style>
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+              </style>
             </div>
           `);
           
           infoWindow.open(mapInstanceRef.current, marker);
           
-          // Add event listener for the button after info window is shown
-          google.maps.event.addListener(infoWindow, 'domready', function() {
-            const button = document.getElementById(`fetch-rankings-${gridIndex}`);
-            if (button) {
-              button.addEventListener('click', async function() {
-                console.log("Button clicked, fetching rankings...");
-                
-                infoWindow.setContent(`
-                  <div style="padding: 12px; text-align: center;">
-                    <p>Loading nearby businesses...</p>
-                    <div class="loading-spinner" style="margin: 10px auto;"></div>
-                  </div>
-                `);
-                
-                try {
-                  // Perform the search using the current search term
-                  const response = await fetch('/api/places-search', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                      query: searchTerm || 'restaurant',
-                      location: { lat, lng },
-                      radius: 2000, // 2km radius
-                    }),
-                  });
+          // Fetch all nearby businesses with pagination
+          try {
+            let allBusinesses: any[] = [];
+            let nextPageToken: string | null = null;
+            
+            // Fetch first page
+            const fetchPage = async (pageToken?: string) => {
+              const response = await fetch('/api/places-search', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  query: searchTerm || 'restaurant',
+                  location: { lat, lng },
+                  radius: 2000, // 2km radius
+                  pageToken: pageToken
+                }),
+              });
+              
+              if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+              }
+              
+              return await response.json();
+            };
+            
+            // Initial request
+            const firstPageData = await fetchPage();
+            allBusinesses = [...firstPageData.results];
+            nextPageToken = firstPageData.nextPageToken;
+            
+            // Update info window to show progress if there are more pages
+            if (nextPageToken) {
+              infoWindow.setContent(`
+                <div style="padding: 16px; text-align: center;">
+                  <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Loading Competitors</h3>
+                  <p style="margin: 0 0 12px 0; color: #5f6368;">Found ${allBusinesses.length} businesses so far...</p>
+                  <div class="loading-spinner" style="margin: 12px auto; border: 3px solid #f3f3f3; border-top: 3px solid #4285F4; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite;"></div>
+                </div>
+              `);
+            }
+            
+            // Fetch additional pages (up to 2 more pages, for a total of 60 results)
+            for (let pageCount = 0; pageCount < 2 && nextPageToken; pageCount++) {
+              // Google requires a short delay before using the next_page_token
+              await new Promise(resolve => setTimeout(resolve, 1500));
+              
+              try {
+                const nextPageData = await fetchPage(nextPageToken);
+                if (nextPageData.results && nextPageData.results.length > 0) {
+                  allBusinesses = [...allBusinesses, ...nextPageData.results];
+                  nextPageToken = nextPageData.nextPageToken;
                   
-                  if (!response.ok) {
-                    throw new Error(`Error: ${response.status}`);
+                  // Update progress
+                  if (nextPageToken) {
+                    infoWindow.setContent(`
+                      <div style="padding: 16px; text-align: center;">
+                        <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 16px;">Loading Competitors</h3>
+                        <p style="margin: 0 0 12px 0; color: #5f6368;">Found ${allBusinesses.length} businesses so far...</p>
+                        <div class="loading-spinner" style="margin: 12px auto; border: 3px solid #f3f3f3; border-top: 3px solid #4285F4; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite;"></div>
+                      </div>
+                    `);
                   }
-                  
-                  const data = await response.json();
-                  
-                  // Find the selected business in results
-                  let businessIndex = -1;
-                  if (selectedBusiness) {
-                    businessIndex = data.results.findIndex(
-                      (place: any) => place.name.toLowerCase().includes(selectedBusiness!.name.toLowerCase())
-                    );
+                } else {
+                  break;
+                }
+              } catch (e) {
+                console.error("Error fetching additional page:", e);
+                break;
+              }
+            }
+            
+            // Find if the selected business is in results
+            let businessIndex = -1;
+            if (selectedBusiness) {
+              businessIndex = allBusinesses.findIndex(
+                (place: any) => place.name.toLowerCase().includes(selectedBusiness!.name.toLowerCase())
+              );
+            }
+            
+            // Get the grid point ranking (this is the position where the selected business should appear)
+            const gridPointRanking = markerRanking || 6; // Use the marker's ranking, default to 6 if not defined
+
+            // Create clear text at the top showing the ranking
+            const rankingHeader = `<div style="background-color: #e8f0fe; padding: 8px 12px; margin-bottom: 12px; border-radius: 6px; border-left: 3px solid #1a73e8; text-align: center;">
+              <p style="margin: 0; font-size: 16px; font-weight: bold; color: #1a73e8;">
+                Your business appears at position <span style="font-size: 18px;">#${gridPointRanking}</span> in this location
+              </p>
+            </div>`;
+
+            // Create a completely new array for the simulated results
+            const simulatedBusinesses: any[] = [];
+
+            // Create a copy of all businesses excluding the selected business
+            if (selectedBusiness) {
+              // First, filter out any instances of the selected business
+              const filteredBusinesses = allBusinesses.filter(
+                (place: any) => !place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase())
+              );
+              
+              // Create a business entry for the selected business
+              const selectedBusinessEntry = {
+                name: selectedBusiness.name,
+                vicinity: selectedBusiness.address || "Address unavailable",
+                place_id: selectedBusiness.placeId || "placeholder_id",
+                rating: 0,
+                user_ratings_total: 0,
+                geometry: {
+                  location: {
+                    lat: 0,
+                    lng: 0
                   }
+                },
+                isPlaceholder: true // Mark as a placeholder
+              };
+              
+              // Add location if available
+              if (selectedBusiness.location && typeof selectedBusiness.location === 'object') {
+                selectedBusinessEntry.geometry.location.lat = selectedBusiness.location.lat;
+                selectedBusinessEntry.geometry.location.lng = selectedBusiness.location.lng;
+              }
+              
+              // Add businesses to the simulated list up to the ranking position
+              for (let i = 0; i < markerRanking - 1 && i < filteredBusinesses.length; i++) {
+                simulatedBusinesses.push(filteredBusinesses[i]);
+              }
+              
+              // Insert the selected business at the exact ranking position
+              simulatedBusinesses.push(selectedBusinessEntry);
+              
+              // Add remaining businesses
+              for (let i = markerRanking - 1; i < filteredBusinesses.length; i++) {
+                simulatedBusinesses.push(filteredBusinesses[i]);
+              }
+              
+              // Replace the original list with our simulated list
+              allBusinesses = simulatedBusinesses;
+            }
+            
+            // Function to render business page
+            const renderBusinessPage = (page = 1) => {
+              const totalResults = allBusinesses.length;
+              const itemsPerPage = 5;
+              const totalPages = Math.ceil(totalResults / itemsPerPage);
+              const startIndex = (page - 1) * itemsPerPage;
+              const endIndex = Math.min(startIndex + itemsPerPage, totalResults);
+              const currentPageItems = allBusinesses.slice(startIndex, endIndex);
+              
+              // Create styled table for business rankings
+              let content = `
+                <div style="padding: 12px; width: 350px; font-family: sans-serif;">
+                  <h3 style="font-weight: bold; margin: 0 0 8px 0;">Nearby Competitors</h3>
+                  <p style="margin: 0 0 12px 0; font-size: 14px; color: #444;">
+                    <strong>${totalResults}</strong> businesses found near
+                    <span style="color: #1a73e8; font-weight: 500;">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
+                  </p>
+              `;
+              
+              // Add the ranking header to make it very clear what position the business has
+              content += rankingHeader;
+              
+              if (totalResults > 0) {
+                content += `
+                  <div style="margin-top: 8px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                      <thead>
+                        <tr style="background-color: #f8f9fa; text-align: left;">
+                          <th style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500;">Rank</th>
+                          <th style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500;">Business</th>
+                          <th style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500; text-align: center;">Rating</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                `;
+                
+                // Show current page results
+                currentPageItems.forEach((place: any, idx: number) => {
+                  const actualRank = startIndex + idx + 1;
+                  const isSelectedBusiness = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
+                  const isPlaceholder = place.isPlaceholder === true;
+                  const rating = place.rating ? place.rating.toFixed(1) : 'N/A';
+                  const ratingCount = place.user_ratings_total ? `(${place.user_ratings_total})` : '';
                   
-                  // Create result content
-                  let content = `
-                    <div style="padding: 12px; max-width: 300px; font-family: 'LocalVikingAlt', sans-serif;">
-                      <h3 style="font-weight: bold; margin: 0 0 8px 0;">Search Results</h3>
-                      <p style="margin: 0 0 8px 0; font-size: 14px;">Keyword: "${searchTerm || 'restaurant'}"</p>
+                  content += `
+                    <tr style="${isSelectedBusiness ? 'background-color: #e8f0fe;' : idx % 2 === 1 ? 'background-color: #f8f9fa;' : ''}">
+                      <td style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-weight: 500; color: #444;">#${actualRank}</td>
+                      <td style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; ${isSelectedBusiness ? 'font-weight: 500; color: #1a73e8;' : ''}">${place.name} ${isSelectedBusiness ? '<span style="background-color: #e0eafc; color: #1a73e8; font-size: 11px; padding: 2px 4px; border-radius: 4px; margin-left: 4px;">Your Business</span>' : ''}</td>
+                      <td style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; text-align: center;">
+                        ${isPlaceholder ? '<span style="color: #9aa0a6; font-style: italic;">Simulated</span>' : `<span style="color: #fbbc04;">★</span> ${rating} <span style="color: #70757a; font-size: 11px;">${ratingCount}</span>`}
+                      </td>
+                    </tr>
                   `;
-                  
-                  if (data.results && data.results.length > 0) {
-                    content += `<div style="margin-top: 8px;"><strong>Top 5 Results:</strong></div><ol style="margin: 4px 0; padding-left: 20px;">`;
-                    
-                    // Show top 5 results
-                    const topResults = data.results.slice(0, 5);
-                    topResults.forEach((place: any) => {
-                      const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
-                      content += `<li style="${isTarget ? 'font-weight: bold; color: #4285F4;' : ''}">${place.name} ${isTarget ? '(Your Business)' : ''}</li>`;
-                    });
-                    
-                    content += `</ol>`;
-                    
-                    // Add business ranking info
-                    if (selectedBusiness) {
-                      if (businessIndex >= 0) {
-                        content += `<p style="margin-top: 12px; font-weight: bold; color: #4285F4;">Your Business Ranks #${businessIndex + 1}</p>`;
-                      } else {
-                        content += `<p style="margin-top: 12px; color: #EA4335;">Your Business Not Found in Top Results</p>`;
-                      }
-                    }
-                  } else {
-                    content += `<p style="margin-top: 8px;">No businesses found for this search.</p>`;
-                  }
-                  
-                  content += `</div>`;
-                  infoWindow.setContent(content);
-                  
-                } catch (error) {
-                  console.error('Error fetching rankings:', error);
-                  infoWindow.setContent(`
-                    <div style="padding: 12px; max-width: 240px;">
-                      <h3 style="font-weight: bold; margin: 0 0 8px 0;">Error</h3>
-                      <p style="color: #EA4335;">Failed to load ranking data. Please try again.</p>
+                });
+                
+                content += `
+                      </tbody>
+                    </table>
+                  </div>
+                `;
+                
+                // Add pagination controls if needed
+                if (totalPages > 1) {
+                  content += `
+                    <div style="display: flex; justify-content: center; align-items: center; margin-top: 12px; gap: 8px;">
+                      <button id="prev-page" style="padding: 4px 8px; border: 1px solid #dadce0; background-color: ${page > 1 ? '#f8f9fa' : '#f1f3f4'}; border-radius: 4px; cursor: ${page > 1 ? 'pointer' : 'default'}; color: ${page > 1 ? '#1a73e8' : '#80868b'};" ${page <= 1 ? 'disabled' : ''}>
+                        &#x25C0; Prev
+                      </button>
+                      <span style="color: #5f6368; font-size: 13px;">Page ${page} of ${totalPages}</span>
+                      <button id="next-page" style="padding: 4px 8px; border: 1px solid #dadce0; background-color: ${page < totalPages ? '#f8f9fa' : '#f1f3f4'}; border-radius: 4px; cursor: ${page < totalPages ? 'pointer' : 'default'}; color: ${page < totalPages ? '#1a73e8' : '#80868b'};" ${page >= totalPages ? 'disabled' : ''}>
+                        Next &#x25B6;
+                      </button>
                     </div>
-                  `);
+                  `;
+                }
+              } else {
+                content += `<div style="padding: 16px; text-align: center; background-color: #f8f9fa; border-radius: 8px; color: #5f6368;">No businesses found for this search term in this area.</div>`;
+              }
+              
+              content += `
+                <div style="margin-top: 12px; font-size: 12px; color: #5f6368; text-align: center;">
+                  Showing results for "${searchTerm || 'restaurant'}" within 2km
+                </div>
+              </div>`;
+              
+              // Set content and add event listeners for pagination
+              infoWindow.setContent(content);
+              
+              // Add event listeners for pagination buttons
+              google.maps.event.addListener(infoWindow, 'domready', function() {
+                const prevButton = document.getElementById('prev-page');
+                const nextButton = document.getElementById('next-page');
+                
+                if (prevButton) {
+                  prevButton.addEventListener('click', function() {
+                    if (page > 1) {
+                      renderBusinessPage(page - 1);
+                    }
+                  });
+                }
+                
+                if (nextButton) {
+                  nextButton.addEventListener('click', function() {
+                    if (page < totalPages) {
+                      renderBusinessPage(page + 1);
+                    }
+                  });
                 }
               });
-            }
-          });
+            };
+            
+            // Initial render with page 1
+            renderBusinessPage(1);
+            
+          } catch (error) {
+            console.error('Error fetching competitors:', error);
+            infoWindow.setContent(`
+              <div style="padding: 16px; max-width: 300px; text-align: center;">
+                <h3 style="font-weight: bold; margin: 0 0 8px 0; color: #d93025;">Error</h3>
+                <p style="color: #5f6368;">Failed to load nearby businesses. Please try again.</p>
+              </div>
+            `);
+          }
         });
 
         markers.push(marker);
@@ -476,72 +1107,66 @@ export function NewGeoGridSearch() {
         fullscreenControl: false,
         styles: [
           {
-            featureType: "water",
-            elementType: "geometry",
-            stylers: [{ color: "#e9e9e9" }, { lightness: 17 }],
+            "featureType": "administrative",
+            "elementType": "geometry",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "landscape",
-            elementType: "geometry",
-            stylers: [{ color: "#f5f5f5" }, { lightness: 20 }],
+            "featureType": "administrative.land_parcel",
+            "elementType": "labels",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "road.highway",
-            elementType: "geometry.fill",
-            stylers: [{ color: "#ffffff" }, { lightness: 17 }],
+            "featureType": "poi",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "road.highway",
-            elementType: "geometry.stroke",
-            stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }],
+            "featureType": "poi",
+            "elementType": "labels.text",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "road.arterial",
-            elementType: "geometry.fill",
-            stylers: [{ color: "#ffffff" }, { lightness: 18 }],
+            "featureType": "road",
+            "elementType": "labels.icon",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "road.local",
-            elementType: "geometry",
-            stylers: [{ color: "#ffffff" }, { lightness: 16 }],
+            "featureType": "road.local",
+            "elementType": "labels",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
           },
           {
-            featureType: "poi",
-            elementType: "geometry",
-            stylers: [{ color: "#f5f5f5" }, { lightness: 21 }],
-          },
-          {
-            featureType: "poi.park",
-            elementType: "geometry",
-            stylers: [{ color: "#dedede" }, { lightness: 21 }],
-          },
-          {
-            elementType: "labels.text.stroke",
-            stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }],
-          },
-          {
-            elementType: "labels.text.fill",
-            stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }],
-          },
-          {
-            elementType: "labels.icon",
-            stylers: [{ visibility: "off" }],
-          },
-          {
-            featureType: "transit",
-            elementType: "geometry",
-            stylers: [{ color: "#f2f2f2" }, { lightness: 19 }],
-          },
-          {
-            featureType: "administrative",
-            elementType: "geometry.fill",
-            stylers: [{ color: "#fefefe" }, { lightness: 20 }],
-          },
-          {
-            featureType: "administrative",
-            elementType: "geometry.stroke",
-            stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }],
-          },
+            "featureType": "transit",
+            "stylers": [
+              {
+                "visibility": "off"
+              }
+            ]
+          }
         ],
       })
 
@@ -632,72 +1257,66 @@ export function NewGeoGridSearch() {
           fullscreenControl: false,
           styles: [
             {
-              featureType: "water",
-              elementType: "geometry",
-              stylers: [{ color: "#e9e9e9" }, { lightness: 17 }],
+              "featureType": "administrative",
+              "elementType": "geometry",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "landscape",
-              elementType: "geometry",
-              stylers: [{ color: "#f5f5f5" }, { lightness: 20 }],
+              "featureType": "administrative.land_parcel",
+              "elementType": "labels",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "road.highway",
-              elementType: "geometry.fill",
-              stylers: [{ color: "#ffffff" }, { lightness: 17 }],
+              "featureType": "poi",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "road.highway",
-              elementType: "geometry.stroke",
-              stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }],
+              "featureType": "poi",
+              "elementType": "labels.text",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "road.arterial",
-              elementType: "geometry.fill",
-              stylers: [{ color: "#ffffff" }, { lightness: 18 }],
+              "featureType": "road",
+              "elementType": "labels.icon",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "road.local",
-              elementType: "geometry",
-              stylers: [{ color: "#ffffff" }, { lightness: 16 }],
+              "featureType": "road.local",
+              "elementType": "labels",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
             },
             {
-              featureType: "poi",
-              elementType: "geometry",
-              stylers: [{ color: "#f5f5f5" }, { lightness: 21 }],
-            },
-            {
-              featureType: "poi.park",
-              elementType: "geometry",
-              stylers: [{ color: "#dedede" }, { lightness: 21 }],
-            },
-            {
-              elementType: "labels.text.stroke",
-              stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }],
-            },
-            {
-              elementType: "labels.text.fill",
-              stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }],
-            },
-            {
-              elementType: "labels.icon",
-              stylers: [{ visibility: "off" }],
-            },
-            {
-              featureType: "transit",
-              elementType: "geometry",
-              stylers: [{ color: "#f2f2f2" }, { lightness: 19 }],
-            },
-            {
-              featureType: "administrative",
-              elementType: "geometry.fill",
-              stylers: [{ color: "#fefefe" }, { lightness: 20 }],
-            },
-            {
-              featureType: "administrative",
-              elementType: "geometry.stroke",
-              stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }],
-            },
+              "featureType": "transit",
+              "stylers": [
+                {
+                  "visibility": "off"
+                }
+              ]
+            }
           ],
         })
 
@@ -777,7 +1396,10 @@ export function NewGeoGridSearch() {
               lat: place.geometry.location.lat(),
               lng: place.geometry.location.lng(),
             },
-            category: place.types?.[0] || 'Business',
+            category: place.types?.[0] || 'business',
+            keywords: [],
+            businessType: place.types?.[0] || 'local business',
+            serviceRadius: 50
           };
           setSelectedBusiness(business);
 
@@ -1099,9 +1721,12 @@ export function NewGeoGridSearch() {
                     lat: place.geometry.location.lat(),
                     lng: place.geometry.location.lng(),
                   }
-                : undefined,
-              category: place.types?.[0] || "Business",
-            }
+                : { lat: 47.6062, lng: -122.3321 },
+              category: place.types?.[0] || "business",
+              keywords: [],
+              businessType: place.types?.[0] || "local business",
+              serviceRadius: 50
+            };
 
             // Set the selected business
             setSelectedBusiness(business)
@@ -1215,6 +1840,9 @@ export function NewGeoGridSearch() {
           },
           category: business.category,
           verified: true, // Assume all businesses in our database are verified
+          keywords: [], // Add missing required properties
+          businessType: business.category || 'local business',
+          serviceRadius: 50
         }))
 
         setGbpListings(listings)
@@ -1337,10 +1965,15 @@ export function NewGeoGridSearch() {
       // Generate grid points
       const currentGridSize = Number.parseInt(gridSize.split("x")[0])
       const gridPoints = generateGridPoints(
-        { lat: selectedBusiness.location.lat, lng: selectedBusiness.location.lng },
+        typeof selectedBusiness.location === 'object' ? selectedBusiness.location : { lat: 47.6062, lng: -122.3321 },
         currentGridSize,
         Number.parseFloat(gridDistance)
       )
+
+      // Ensure gridPoints is not undefined before using it
+      if (!gridPoints || gridPoints.length === 0) {
+        throw new Error("Failed to generate grid points");
+      }
 
       // Step 4: Fetch real rankings
       updateProgress()
@@ -1373,9 +2006,11 @@ export function NewGeoGridSearch() {
       const topRankings = flattenedValues.filter((val) => val <= 20)
       const avgTopRanking =
         topRankings.length > 0 ? topRankings.reduce((sum, val) => sum + val, 0) / topRankings.length : 0
+      
+      // Standard SoLV calculation - percentage of places where business appears in top 10 results
       const solvPercentage = Math.round(
-        (flattenedValues.filter((val) => val <= 3).length / flattenedValues.length) * 100,
-      )
+        (flattenedValues.filter((val) => val <= 10).length / flattenedValues.length) * 100
+      );
 
       // Function to fetch and display nearby businesses for a grid point
       const showNearbyBusinesses = async (lat: number, lng: number, gridIndex: number) => {
@@ -1399,7 +2034,7 @@ export function NewGeoGridSearch() {
           const data = await response.json();
           if (!data.results || data.results.length === 0) {
             return `<div class="p-3">
-              <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+              <h3 class="font-bold">Grid Location</h3>
               <p class="text-sm mt-1">No businesses found for "${searchTerm || 'restaurant'}"</p>
               <p class="text-xs mt-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
               <p class="text-xs">Distance: ${gridDistance}km from center</p>
@@ -1412,7 +2047,7 @@ export function NewGeoGridSearch() {
           );
 
           let content = `<div class="p-3">
-            <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+            <h3 class="font-bold">Grid Location</h3>
             <p class="text-sm mt-1">Search: "${searchTerm || 'restaurant'}"</p>
             <p class="text-xs mb-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
             <div class="border-t pt-2">
@@ -1443,7 +2078,7 @@ export function NewGeoGridSearch() {
         } catch (error) {
           console.error('Error fetching nearby businesses:', error);
           return `<div class="p-3">
-            <h3 class="font-bold">Grid Point #${gridIndex}</h3>
+            <h3 class="font-bold">Grid Location</h3>
             <p class="text-sm text-red-600">Error loading data</p>
             <p class="text-xs mt-2">Coordinates: ${lat.toFixed(5)}, ${lng.toFixed(5)}</p>
           </div>`;
@@ -1467,71 +2102,31 @@ export function NewGeoGridSearch() {
             
             // Update marker appearance based on ranking
             if (marker) {
-              // Choose color and size based on ranking
-              let color, size, strokeColor, strokeWeight, zIndex;
+              // Use rank icon images instead of generating styles
+              let iconFile;
+              let size = 32; // Default size for the icon images
+              let zIndex;
               
-              if (ranking <= 3) {
-                color = "#4CAF50"; // Green for top 3
-                size = 16;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 2;
-                zIndex = 4;
-              } else if (ranking <= 7) {
-                color = "#8BC34A"; // Light green for top 7
-                size = 14;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 1.5;
-                zIndex = 3;
-              } else if (ranking <= 10) {
-                color = "#FFC107"; // Yellow for top 10
-                size = 12;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 1.5;
-                zIndex = 2;
-              } else if (ranking <= 15) {
-                color = "#FF9800"; // Orange for top 15
-                size = 10;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 1;
-                zIndex = 1;
+              if (ranking <= 20) {
+                // Use the corresponding number icon (1.png, 2.png, etc.)
+                iconFile = `/images/rank-icons/${ranking}.png`;
+                // Higher rankings get higher z-index
+                zIndex = 20 - ranking + 1;
               } else {
-                color = "#F44336"; // Red for not found or low ranking
-                size = 8;
-                strokeColor = "#FFFFFF";
-                strokeWeight = 1;
+                // Not ranked uses X.png
+                iconFile = `/images/rank-icons/X.png`;
                 zIndex = 0;
               }
               
-              // Update marker icon and label
+              // Update marker icon to use the image
               marker.setIcon({
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: color,
-                fillOpacity: 0.85,
-                strokeColor: strokeColor,
-                strokeWeight: strokeWeight,
-                scale: size,
-                labelOrigin: new google.maps.Point(0, 0)
+                url: iconFile,
+                scaledSize: new google.maps.Size(size, size),
+                anchor: new google.maps.Point(size/2, size/2)
               });
               
-              // Set the label to show the ranking
-              if (ranking <= 20) {
-                marker.setLabel({
-                  text: ranking.toString(),
-                  color: "#FFFFFF",
-                  fontFamily: "LocalVikingAlt, sans-serif",
-                  fontSize: "11px",
-                  fontWeight: "bold"
-                });
-              } else {
-                // For rankings > 20, don't show a number
-                marker.setLabel({
-                  text: "×",
-                  color: "#FFFFFF",
-                  fontFamily: "LocalVikingAlt, sans-serif",
-                  fontSize: "10px",
-                  fontWeight: "bold"
-                });
-              }
+              // Remove the label as the rank is now shown in the image
+              marker.setLabel(null);
               
               // Update marker title and z-index
               marker.setTitle(`Rank: ${ranking <= 20 ? ranking : 'Not Found'}`);
@@ -1540,144 +2135,11 @@ export function NewGeoGridSearch() {
               // Store ranking in marker for info window access
               (marker as any).ranking = ranking;
               
-              // Update the click handler to show ranking information
-              google.maps.event.clearListeners(marker, 'click');
-              marker.addListener('click', function() {
-                // Create info window if not exists
-                const infoWindow = new google.maps.InfoWindow();
-                
-                // Set content with ranking info
-                infoWindow.setContent(`
-                  <div style="padding: 16px; max-width: 300px; font-family: 'LocalVikingAlt', sans-serif;">
-                    <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 18px;">Search Results</h3>
-                    <p style="margin: 4px 0; font-size: 14px;">Keyword: "${searchTerm}"</p>
-                    <div style="display: flex; align-items: center; margin: 12px 0; background-color: ${color}20; padding: 10px; border-radius: 6px;">
-                      <div style="width: 30px; height: 30px; border-radius: 50%; background-color: ${color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 10px;">
-                        ${ranking <= 20 ? ranking : '×'}
-                      </div>
-                      <div>
-                        <p style="margin: 0; font-weight: bold; font-size: 15px;">
-                          ${ranking <= 20 
-                            ? `Your business ranks #${ranking} here` 
-                            : 'Your business not found in top 20'}
-                        </p>
-                        <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">
-                          Grid position: Row ${i+1}, Column ${j+1}
-                        </p>
-                      </div>
-                    </div>
-                    <button id="view-details-${markerIndex}" style="background-color: #4285F4; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; width: 100%; font-family: 'LocalVikingAlt', sans-serif;">
-                      View Detailed Results
-                    </button>
-                  </div>
-                `);
-                
-                // Open info window
-                infoWindow.open(mapInstanceRef.current, marker);
-                
-                // Add event listener for the button
-                google.maps.event.addListener(infoWindow, 'domready', function() {
-                  const button = document.getElementById(`view-details-${markerIndex}`);
-                  if (button) {
-                    button.addEventListener('click', async function() {
-                      console.log("Fetching detailed results...");
-                      
-                      infoWindow.setContent(`
-                        <div style="padding: 12px; text-align: center;">
-                          <p>Loading detailed results...</p>
-                          <div class="loading-spinner" style="margin: 10px auto;"></div>
-                        </div>
-                      `);
-                      
-                      try {
-                        // Get the marker position
-                        const position = marker.getPosition();
-                        if (!position) throw new Error("Invalid marker position");
-                        
-                        const lat = position.lat();
-                        const lng = position.lng();
-                        
-                        // Fetch nearby businesses
-                        const response = await fetch('/api/places-search', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify({
-                            query: searchTerm,
-                            location: { lat, lng },
-                            radius: 2000, // 2km radius
-                          }),
-                        });
-                        
-                        if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-                        
-                        const data = await response.json();
-                        
-                        // Create detailed content
-                        let content = `
-                          <div style="padding: 16px; max-width: 320px; font-family: 'LocalVikingAlt', sans-serif;">
-                            <h3 style="font-weight: bold; margin: 0 0 8px 0;">Local Search Results</h3>
-                            <p style="margin: 0 0 12px 0; font-size: 14px;">
-                              Keyword: "${searchTerm}" at this location
-                            </p>
-                        `;
-                        
-                        if (data.results && data.results.length > 0) {
-                          content += `<div style="margin-top: 8px;"><strong>Top Businesses:</strong></div>
-                          <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
-                            <tr style="background-color: #f3f4f6;">
-                              <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Rank</th>
-                              <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Business</th>
-                              <th style="text-align: left; padding: 6px; border-bottom: 1px solid #e5e7eb;">Rating</th>
-                            </tr>`;
-                          
-                          // Show top 10 results
-                          const topResults = data.results.slice(0, 10);
-                          topResults.forEach((place: any, idx: number) => {
-                            const isTarget = selectedBusiness && place.name.toLowerCase().includes(selectedBusiness.name.toLowerCase());
-                            const backgroundColor = isTarget ? '#4285F420' : (idx % 2 === 0 ? '#ffffff' : '#f9fafb');
-                            const fontWeight = isTarget ? 'bold' : 'normal';
-                            const nameColor = isTarget ? '#4285F4' : '#000000';
-                            
-                            content += `
-                              <tr style="background-color: ${backgroundColor};">
-                                <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;">${idx + 1}</td>
-                                <td style="padding: 6px; border-bottom: 1px solid #e5e7eb; font-weight: ${fontWeight}; color: ${nameColor};">
-                                  ${place.name} ${isTarget ? '(Your Business)' : ''}
-                                </td>
-                                <td style="padding: 6px; border-bottom: 1px solid #e5e7eb;">
-                                  ${place.rating ? `${place.rating} ★` : 'N/A'}
-                                </td>
-                              </tr>
-                            `;
-                          });
-                          
-                          content += `</table>`;
-                        } else {
-                          content += `<p style="margin-top: 12px;">No businesses found for this search.</p>`;
-                        }
-                        
-                        content += `</div>`;
-                        infoWindow.setContent(content);
-                        
-                      } catch (error) {
-                        console.error('Error fetching detailed results:', error);
-                        infoWindow.setContent(`
-                          <div style="padding: 12px; max-width: 240px;">
-                            <h3 style="font-weight: bold; margin: 0 0 8px 0;">Error</h3>
-                            <p style="color: #EA4335;">Failed to load detailed data. Please try again.</p>
-                          </div>
-                        `);
-                      }
-                    });
-                  }
-                });
-              }
-              
-              // Increment marker index
-              markerIndex += 1;
+              // Add custom data to each marker to store its ranking
+              (marker as any).businessRanking = ranking;
             }
+            
+            markerIndex++;
           }
         }
       }
@@ -1692,7 +2154,7 @@ export function NewGeoGridSearch() {
         businessInfo: {
           name: selectedBusiness.name,
           address: selectedBusiness.address,
-          location: selectedBusiness.location,
+          location: typeof selectedBusiness.location === 'object' ? selectedBusiness.location : { lat: 47.6062, lng: -122.3321 },
           placeId: selectedBusiness.placeId,
           category: selectedBusiness.category
         },
@@ -1712,6 +2174,9 @@ export function NewGeoGridSearch() {
         distanceKm: Number.parseFloat(gridDistance)
       });
       
+      // Reset the search term after successful search completion
+      setSearchTerm("");
+      
       // Add the result to history
       setHistoryResults(prev => [result, ...prev]);
       
@@ -1722,13 +2187,15 @@ export function NewGeoGridSearch() {
       });
       
     } catch (error) {
-      console.error("Error starting geogrid search:", error)
+      console.error('Error during GeoGrid search:', error)
       toast({
         title: "Error",
         description: "An error occurred during the GeoGrid search. Please try again.",
         variant: "destructive"
       })
     } finally {
+      // Navigate to the dashboard after search is completed
+      router.push('/')
       setIsSearching(false)
       setSearchProgress(0)
     }
@@ -2111,7 +2578,7 @@ export function NewGeoGridSearch() {
 
   // Get user location directly
   useEffect(() => {
-    if ('geolocation' in navigator) {
+    if (mapLoaded && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const userLocation = {
@@ -2143,10 +2610,55 @@ export function NewGeoGridSearch() {
         },
         (error) => {
           console.error('Error getting location:', error);
+          
+          // Prepare error message based on error code
+          let errorTitle = "Location error";
+          let errorDescription = "An error occurred while getting your location. Using default location instead.";
+          
+          if (error.code === 1) {
+            errorTitle = "Location access denied";
+            errorDescription = "Please enable location services in your browser to use location features.";
+          } else if (error.code === 2) {
+            errorTitle = "Location unavailable";
+            errorDescription = "Your current location could not be determined.";
+          } else if (error.code === 3) {
+            errorTitle = "Location request timed out";
+            errorDescription = "Location request took too long to complete.";
+          }
+          
+          // Show toast notification
+          toast({
+            title: errorTitle,
+            description: errorDescription,
+            variant: "destructive",
+          });
+          
+          // Use a default location as fallback
+          const defaultLocation = { lat: 40.7128, lng: -74.006 }; // NYC coordinates
+          
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setCenter(defaultLocation);
+            mapInstanceRef.current.setZoom(10);
+          }
         }
       );
+    } else if (mapLoaded) {
+      // Browser doesn't support geolocation
+      toast({
+        title: "Geolocation not supported",
+        description: "Your browser doesn't support geolocation. Using default location instead.",
+        variant: "destructive",
+      });
+      
+      // Use default location
+      const defaultLocation = { lat: 40.7128, lng: -74.006 }; // NYC coordinates as fallback
+      
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setCenter(defaultLocation);
+        mapInstanceRef.current.setZoom(10);
+      }
     }
-  }, [mapLoaded]);
+  }, [mapLoaded, toast]);
 
   // Add this function before the return statement
   const saveSettings = () => {
@@ -2165,40 +2677,7 @@ export function NewGeoGridSearch() {
 
   return (
     <div className="container mx-auto py-20 px-4">
-      <div className="flex justify-end mb-6 mt-4">
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="flex gap-2 p-0 shadow-md">
-            <TabsTrigger
-              value="new-geogrid"
-              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
-              title="New GeoGrid"
-            >
-              <Plus className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger
-              value="history"
-              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
-              title="History"
-            >
-              <Clock className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger
-              value="config-geogrids"
-              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
-              title="Config's GeoGrids"
-            >
-              <Settings className="h-5 w-5" />
-            </TabsTrigger>
-            <TabsTrigger
-              value="edit-config"
-              className="p-2.5 transition-all data-[state=active]:text-blue-600 text-gray-600 hover:text-blue-600"
-              title="Edit Config"
-            >
-              <Edit className="h-5 w-5" />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      {/* Removing the tabs list as requested */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsContent value="new-geogrid" className="mt-6">
           {isSearching ? (
@@ -2416,6 +2895,7 @@ export function NewGeoGridSearch() {
                               { value: "0.5", label: "500m" },
                               { value: "1", label: "1km" },
                               { value: "2", label: "2km" },
+                              { value: "2.5", label: "2.5km" },
                               { value: "5", label: "5km" },
                               { value: "10", label: "10km" },
                               { value: "15", label: "15km" },

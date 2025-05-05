@@ -1,9 +1,9 @@
 import type React from "react"
 import "@/app/globals.css"
-import { Inter } from "next/font/google"
+import { Nunito } from "next/font/google"
 import { MainNav } from "@/components/main-nav"
 
-const inter = Inter({ subsets: ["latin"] })
+const nunito = Nunito({ subsets: ["latin"] })
 
 export const metadata = {
   title: "GeoGrid - Local SEO Analysis",
@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={nunito.className}>
         <div className="min-h-screen flex flex-col">
           <MainNav />
           <main className="flex-1">{children}</main>

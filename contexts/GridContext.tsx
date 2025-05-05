@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
-import { useGrid, GridConfig } from '@/hooks/useGrid';
+import { useGrid } from '@/hooks/useGrid';
+import { GridConfig } from '@/lib/grid-service';
 
 interface GridContextType {
   config: GridConfig;

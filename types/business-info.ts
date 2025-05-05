@@ -8,4 +8,5 @@ export interface BusinessInfo {
   keywords: string[];
   businessType: "physical" | "restaurant" | "medical" | "service" | string;
   serviceRadius: number;
+  rating?: number;
 }

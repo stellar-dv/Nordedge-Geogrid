@@ -85,7 +85,11 @@ export class GridService {
     if (error) {
       throw new Error(error);
     }
-    return this.calculateGridPoints(config);
+    const points = this.calculateGridPoints(config);
+    if (!points) {
+      throw new Error('Failed to generate grid points');
+    }
+    return points;
   }
 
   // Calculate total coverage area

@@ -31,21 +31,6 @@ export function MainNav() {
       name: "GeoGrid Search",
       href: "/new-search",
       icon: Search,
-    },
-    {
-      name: "Reports",
-      href: "/reports",
-      icon: FileText,
-    },
-    {
-      name: "Analytics",
-      href: "/analytics",
-      icon: BarChart2,
-    },
-    {
-      name: "Locations",
-      href: "/locations",
-      icon: MapPin,
     }
   ]
 

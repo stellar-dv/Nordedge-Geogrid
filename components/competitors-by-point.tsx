@@ -133,7 +133,6 @@ export function CompetitorsByPoint({
           body: JSON.stringify({
             query: searchTerm,
             location: { lat: latitude, lng: longitude },
-            radius: 1500,
             rankBy: 'prominence',
           }),
         })

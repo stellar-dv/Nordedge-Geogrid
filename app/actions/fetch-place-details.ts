@@ -47,9 +47,11 @@ export async function fetchPlaceDetails(placeId: string): Promise<{
     return {
       success: true,
       data: {
-        businessName: place.name || "Unknown Business",
+        name: place.name || "Unknown Business",
+        address: place.formatted_address || "Unknown Location",
+        location: place.geometry?.location || { lat: 0, lng: 0 },
         category: category,
-        location: place.formatted_address || "Unknown Location",
+        placeId: placeId,
         keywords: [category.toLowerCase(), "local business"],
         businessType: "physical", // Default to physical
         serviceRadius: 10, // Default radius
